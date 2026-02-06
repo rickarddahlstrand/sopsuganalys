@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Output (genererade filer)
+output/
+
+# Rapporter (känslig driftdata)
+rapporter/
+*.xls
+*.xlsx
+
+# Genererade filer som kan hamna utanför output/
+*.csv
+*.json
+*.pdf
+*.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Arkiv
+*.zip
