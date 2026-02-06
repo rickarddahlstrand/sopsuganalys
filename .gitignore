@@ -20,6 +20,10 @@ rapporter/*
 *.pdf
 *.png
 
+# Webapp
+webapp/node_modules/
+webapp/dist/
+
 # OS
 .DS_Store
 Thumbs.db

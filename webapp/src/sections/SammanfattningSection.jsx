@@ -1,0 +1,91 @@
+import { useState } from 'react'
+import { FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import { useData } from '../context/DataContext'
+import { useTheme } from '../context/ThemeContext'
+import { getNivoTheme } from '../utils/nivoTheme'
+import { SECTION_INFO } from '../utils/descriptions'
+import SectionWrapper from '../components/common/SectionWrapper'
+import KpiGrid from '../components/common/KpiGrid'
+import KpiCard from '../components/common/KpiCard'
+import ChartCard from '../components/common/ChartCard'
+import DataTable from '../components/common/DataTable'
+import EmptyState from '../components/common/EmptyState'
+import { ResponsiveBar } from '@nivo/bar'
+
+const DEFAULT_CHART_LIMIT = 4
+
+export default function SammanfattningSection() {
+  const { state } = useData()
+  const { dark } = useTheme()
+  const theme = getNivoTheme(dark)
+  const samm = state.sammanfattning
+  const [showAllCharts, setShowAllCharts] = useState(false)
+
+  if (!samm) return <SectionWrapper id="sammanfattning" title="Sammanfattning" icon={FileText} info={SECTION_INFO.sammanfattning}><EmptyState loading={state.isLoading} /></SectionWrapper>
+
+  const top6 = samm.top6 || []
+
+  return (
+    <SectionWrapper id="sammanfattning" title="Sammanfattning" icon={FileText} info={SECTION_INFO.sammanfattning}>
+      <KpiGrid>
+        {top6.map(kpi => (
+          <KpiCard
+            key={kpi.key}
+            label={kpi.key}
+            value={`${kpi.mean} ${kpi.unit}`}
+            icon={FileText}
+            color="blue"
+          />
+        ))}
+      </KpiGrid>
+
+      {top6.length > 0 && (
+        <div className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(showAllCharts ? top6 : top6.slice(0, DEFAULT_CHART_LIMIT)).map(kpi => (
+              <ChartCard key={kpi.key} title={`${kpi.key} ${kpi.unit ? `(${kpi.unit})` : ''}`} height={220} info="Visar månatlig variation. Om Min och Max är identiska är värdet konstant under året.">
+                <ResponsiveBar
+                  data={kpi.monthlyValues.map(v => ({ month: v.month, value: v.value }))}
+                  keys={['value']}
+                  indexBy="month"
+                  theme={theme}
+                  colors={['#3b82f6']}
+                  borderRadius={3}
+                  padding={0.3}
+                  margin={{ top: 10, right: 10, bottom: 30, left: 60 }}
+                  axisLeft={{ tickSize: 0, tickPadding: 5 }}
+                  axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+                  enableLabel={false}
+                />
+              </ChartCard>
+            ))}
+          </div>
+          {top6.length > DEFAULT_CHART_LIMIT && (
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={() => setShowAllCharts(s => !s)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
+                {showAllCharts ? <><ChevronUp className="w-3.5 h-3.5" />Visa färre diagram</> : <><ChevronDown className="w-3.5 h-3.5" />Visa alla {top6.length} diagram</>}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-6">
+        <DataTable
+          columns={[
+            { key: 'key', label: 'KPI' },
+            { key: 'type', label: 'Typ' },
+            { key: 'mean', label: 'Medel', render: v => v != null ? v : '–' },
+            { key: 'min', label: 'Min', render: v => v != null ? v : '–' },
+            { key: 'max', label: 'Max', render: v => v != null ? v : '–' },
+            { key: 'unit', label: 'Enhet' },
+          ]}
+          data={samm.kpis}
+        />
+      </div>
+    </SectionWrapper>
+  )
+}
