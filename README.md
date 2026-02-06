@@ -32,7 +32,7 @@ Detta verktyg är skapat av Rickard Dahlstrand och licensierat under [Creative C
 ### 1. Klona och installera
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/rickarddahlstrand/sopsuganalys.git
 cd sopsuganalys
 ./setup.sh
 ```
