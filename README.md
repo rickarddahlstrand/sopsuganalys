@@ -1,6 +1,6 @@
 # Sopsuganalys
 
-Detta analysverktyg kan användas för att analysera driftrapporter från sopsuganläggningar. Det läser Envacs månadsrapporter (.xls) och genererar statistik, trender, rekommendationer och en sammanfattande PDF-rapport.
+Detta analysverktyg kan användas för att analysera driftrapporter från sopsuganläggningar. Det läser servicerapporter (.xls) och genererar statistik, trender, rekommendationer och en sammanfattande PDF-rapport.
 
 Verktyget behandlar endast filer lokalt och ingen information laddas upp i molnet.
 
@@ -41,7 +41,7 @@ cd sopsuganalys
 
 ### 2. Lägg till rapporter
 
-Placera Envacs månadsrapporter (.xls) i katalogen `rapporter/`:
+Placera servicerapporter (.xls) i katalogen `rapporter/`:
 
 ```
 rapporter/

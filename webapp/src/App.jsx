@@ -36,24 +36,30 @@ const sections = [
 function InfoHint() {
   const [visible, setVisible] = useState(false)
   const [pos, setPos] = useState(null)
+  const btnRef = useRef(null)
 
   useEffect(() => {
-    // Delay to let whileInView animations settle
-    const startDelay = setTimeout(() => {
-      const btn = document.querySelector('[aria-label="Mer information"]')
-      if (!btn) return
-      const rect = btn.getBoundingClientRect()
-      setPos({
-        top: rect.top + rect.height / 2,
-        left: rect.right + 10,
-      })
-      setVisible(true)
-    }, 800)
+    let raf
+    let btn
 
-    const hideTimer = setTimeout(() => setVisible(false), 8000)
+    const track = () => {
+      if (!btn) {
+        btn = document.querySelector('[aria-label="Mer information"]')
+        if (!btn) { raf = requestAnimationFrame(track); return }
+        btnRef.current = btn
+        setVisible(true)
+        btn.addEventListener('mouseenter', () => setVisible(false))
+      }
+      const rect = btn.getBoundingClientRect()
+      setPos({ top: rect.top + rect.height / 2, left: rect.right + 10 })
+      raf = requestAnimationFrame(track)
+    }
+
+    const startDelay = setTimeout(() => { raf = requestAnimationFrame(track) }, 800)
+
     return () => {
       clearTimeout(startDelay)
-      clearTimeout(hideTimer)
+      if (raf) cancelAnimationFrame(raf)
     }
   }, [])
 
@@ -63,24 +69,24 @@ function InfoHint() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, x: -8, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: -6, scale: 0.95 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translateY(-50%)' }}
+          initial={{ opacity: 0, x: -10, scale: 0.9, y: '-50%' }}
+          animate={{ opacity: 1, x: 0, scale: 1, y: '-50%' }}
+          exit={{ opacity: 0, x: -8, scale: 0.92, y: '-50%' }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          style={{ position: 'fixed', top: pos.top, left: pos.left }}
           className="z-[9998] pointer-events-none flex items-center"
         >
           {/* Arrow pointing left */}
-          <div className="-mr-1.5 w-2.5 h-2.5 rotate-45 bg-emerald-600 dark:bg-emerald-500 rounded-[2px]" />
+          <div className="-mr-1.5 w-2 h-2 rotate-45 bg-emerald-600 dark:bg-emerald-500" />
           {/* Tooltip body */}
           <motion.div
-            animate={{ scale: [1, 1.03, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/30 dark:shadow-emerald-500/20"
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            className="px-4 py-2 rounded-full bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 dark:shadow-emerald-500/15"
           >
             <p className="text-xs font-medium text-white whitespace-nowrap flex items-center gap-1.5">
               Hovra över
-              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/20">
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/25 backdrop-blur-sm">
                 <Info className="w-2.5 h-2.5 text-white" />
               </span>
               för detaljer

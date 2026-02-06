@@ -1,6 +1,7 @@
 import { useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, FileSpreadsheet, CheckCircle2, Loader2, ShieldCheck, HardDrive, Wind, ArrowRight } from 'lucide-react'
+import JSZip from 'jszip'
 import { useData } from '../context/DataContext'
 import { parseXlsFile } from '../parsers/xlsParser'
 import { sortFilesByMonth } from '../parsers/fileSort'
@@ -19,10 +20,42 @@ export default function UploadSection() {
   const [progress, setProgress] = useState(0)
   const inputRef = useRef()
 
+  const extractFromZip = async (zipFile) => {
+    const zip = await JSZip.loadAsync(zipFile)
+    const xlsEntries = Object.values(zip.files).filter(f => {
+      if (f.dir) return false
+      const name = f.name.split('/').pop()
+      // Skip macOS resource forks and hidden files
+      if (name.startsWith('.') || name.startsWith('._')) return false
+      if (f.name.includes('__MACOSX')) return false
+      return name.endsWith('.xls') || name.endsWith('.xlsx')
+    })
+    const extracted = []
+    for (const entry of xlsEntries) {
+      const buf = await entry.async('arraybuffer')
+      const name = entry.name.split('/').pop()
+      extracted.push(new File([buf], name))
+    }
+    return extracted
+  }
+
   const handleFiles = useCallback(async (fileList) => {
-    const xlsFiles = Array.from(fileList).filter(f =>
-      f.name.endsWith('.xls') || f.name.endsWith('.xlsx')
-    )
+    const allFiles = Array.from(fileList)
+    const xlsFiles = []
+
+    // Extract .xls from zip files, pass through direct .xls files
+    for (const f of allFiles) {
+      if (f.name.endsWith('.zip')) {
+        try {
+          const extracted = await extractFromZip(f)
+          xlsFiles.push(...extracted)
+        } catch (err) {
+          console.error(`Failed to unzip ${f.name}:`, err)
+        }
+      } else if (f.name.endsWith('.xls') || f.name.endsWith('.xlsx')) {
+        xlsFiles.push(f)
+      }
+    }
     if (xlsFiles.length === 0) return
 
     setFiles(xlsFiles.map(f => ({ name: f.name, status: 'pending' })))
@@ -76,7 +109,7 @@ export default function UploadSection() {
           Analysera dina servicerapporter
         </h2>
         <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed">
-          Ladda upp Envac servicerapporter i Excel-format för att få en interaktiv analys med trender, diagram och åtgärdsförslag.
+          Ladda upp servicerapporter i Excel-format för att få en interaktiv analys med trender, diagram och åtgärdsförslag.
         </p>
       </motion.div>
 
@@ -101,7 +134,7 @@ export default function UploadSection() {
             ref={inputRef}
             type="file"
             multiple
-            accept=".xls,.xlsx"
+            accept=".xls,.xlsx,.zip"
             className="hidden"
             onChange={e => handleFiles(e.target.files)}
           />
@@ -146,7 +179,7 @@ export default function UploadSection() {
                   Dra filer hit eller klicka för att välja
                 </p>
                 <p className="text-sm text-slate-400 dark:text-slate-500 mt-1.5">
-                  .xls / .xlsx — en eller flera månader och år
+                  .xls / .xlsx / .zip — en eller flera månader och år
                 </p>
               </motion.div>
             )}
@@ -241,7 +274,7 @@ export default function UploadSection() {
         className="mt-8 flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium mx-auto w-fit"
       >
         <ShieldCheck className="w-3.5 h-3.5" />
-        <span>Alla filer processas lokalt — inget lämnar din webbläsare</span>
+        <span>Alla filer processas lokalt — inget lämnar din dator</span>
       </motion.div>
     </div>
   )
