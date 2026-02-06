@@ -490,6 +490,7 @@ def add_alarm_section(pdf, data):
 
 
 def add_manual_section(pdf, data):
+    pdf.add_page()
     pdf.section_title("Manuella körningar")
 
     pdf.body_text(
