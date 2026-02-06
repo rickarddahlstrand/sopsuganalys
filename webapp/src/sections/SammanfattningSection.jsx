@@ -3,7 +3,7 @@ import { FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
-import { SECTION_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -43,7 +43,7 @@ export default function SammanfattningSection() {
         <div className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(showAllCharts ? top6 : top6.slice(0, DEFAULT_CHART_LIMIT)).map(kpi => (
-              <ChartCard key={kpi.key} title={`${kpi.key} ${kpi.unit ? `(${kpi.unit})` : ''}`} height={220} info="Visar månatlig variation. Om Min och Max är identiska är värdet konstant under året.">
+              <ChartCard key={kpi.key} title={`${kpi.key} ${kpi.unit ? `(${kpi.unit})` : ''}`} height={220} info={CHART_INFO['Sammanfattning — månatlig variation']}>
                 <ResponsiveBar
                   data={kpi.monthlyValues.map(v => ({ month: v.month, value: v.value }))}
                   keys={['value']}

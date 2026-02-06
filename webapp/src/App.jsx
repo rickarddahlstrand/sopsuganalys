@@ -74,7 +74,7 @@ function InfoHint() {
           exit={{ opacity: 0, x: -8, scale: 0.92, y: '-50%' }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           style={{ position: 'fixed', top: pos.top, left: pos.left }}
-          className="z-[9998] pointer-events-none flex items-center"
+          className="z-[9998] pointer-events-none flex items-center print:hidden"
         >
           {/* Arrow pointing left */}
           <div className="-mr-1.5 w-2 h-2 rotate-45 bg-emerald-600 dark:bg-emerald-500" />

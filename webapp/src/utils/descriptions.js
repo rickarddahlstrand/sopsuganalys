@@ -489,6 +489,60 @@ export const CHART_INFO = {
     'kan det vara ett säsongsrelaterat mönster snarare än en försämring.',
 
   // Trend
+  // Larm (extra)
+  'Larm per kategori (årstotal)':
+    'Visar totalt antal larm per kategori summerat över hela den analyserade perioden.' +
+    '\n\n' +
+    'Staplarna visar hur larmvolymen fördelar sig mellan kategorierna General, Critical och Total stop. ' +
+    'General-larm (t.ex. "container full", "lång tid sedan tömning") är normala drifthändelser som inte kräver akut åtgärd. ' +
+    'Critical-larm (t.ex. "sopventil svarar inte", "full ej tömd") kräver operatörsåtgärd. ' +
+    'Total stop innebär att en gren eller hela anläggningen stått still. ' +
+    '\n\n' +
+    'Om Critical eller Total stop utgör en stor andel av totalen bör man undersöka vilka grenar och ventiler som genererar dessa larm. ' +
+    'En hög andel General-larm är normalt — de är informativa och visar att styrsystemet övervakar korrekt.',
+
+  // Gren (extra)
+  'Manuell andel per gren':
+    'Visar hur stor andel av alla öppningskommandon per gren som är manuella.' +
+    '\n\n' +
+    'Varje stapel representerar en gren i kvartersnätet. Värdet anger procentandelen manuella ' +
+    'kommandon (MAN_OPEN_CMD) av alla öppningskommandon (manuella + automatiska). ' +
+    'Grenar med hög manuell andel har sopventiler vars automatik inte fungerar korrekt — ' +
+    'operatörer måste aktivt trigga tömningar istället för att de sker automatiskt. ' +
+    '\n\n' +
+    'Under 3% är normalt, 3–10% bör övervakas, över 10% kräver åtgärd. ' +
+    'Om en hel gren har hög manuell andel kan problemet vara i styrsystemets logik ' +
+    'eller kommunikation (MQTT) snarare än i enskilda sopventiler. ' +
+    'Jämför med hälsopoängen — en gren kan ha bra hälsa men hög manuell andel ' +
+    'om operatörerna kompenserar effektivt.',
+
+  'Sommar vs vinter per gren (kommandon)':
+    'Jämför totala öppningskommandon under sommar respektive vinter för varje gren.' +
+    '\n\n' +
+    'Diagrammet visar två staplar per gren: orange för sommar (juni–augusti) och blå för vinter (december–februari). ' +
+    'Grenar som betjänar skolor har ofta kraftigt minskad aktivitet under sommaren (lov), ' +
+    'medan bostadsgrenar är relativt jämna. ' +
+    '\n\n' +
+    'Stor skillnad mellan sommar och vinter kan motivera säsongsanpassad drift — ' +
+    't.ex. längre tömningsintervall under sommarlov för skolgrenar, ' +
+    'eller reducerad övervakning under perioder med låg aktivitet. ' +
+    'Grenar som borde vara jämna (bostäder) men visar stor variation kan ha ett underliggande problem.',
+
+  'Sammanfattning — månatlig variation':
+    'Visar hur detta nyckeltal varierar mellan månader under den analyserade perioden.' +
+    '\n\n' +
+    'Varje stapel representerar en månad. Om alla staplar är identiska är värdet konstant ' +
+    '(t.ex. antal ventiler, antal lägenheter) — det bekräftar att anläggningens konfiguration inte ändrats. ' +
+    '\n\n' +
+    'Om värdet varierar kan det bero på:\n' +
+    '• Utrustning som lagts till eller tagits ur drift\n' +
+    '• Säsongsberoende parametrar (t.ex. drifttryck, temperaturberoende mätningar)\n' +
+    '• Sensorfel eller felkalibrering\n' +
+    '\n' +
+    'Plötsliga hopp bör utredas — de kan indikera att en förändring gjorts i anläggningen ' +
+    'eller att en sensor rapporterar felaktigt.',
+
+  // Trend
   'Energi + MA(3) + trendlinje (kWh)':
     'Gul = faktisk energi, orange = MA(3), grå = trendlinje. ' +
     'Minskande trend (R² nära 1) innebär systematisk minskning.' +

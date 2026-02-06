@@ -87,7 +87,7 @@ export default function LarmSection() {
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        <ChartCard title="Larm per månad" height={300}>
+        <ChartCard title="Larm per månad" height={300} info={CHART_INFO['Larm per månad']}>
           <ResponsiveBar
             data={alarmBarData}
             keys={['Larm']}
@@ -143,6 +143,7 @@ export default function LarmSection() {
           <ChartCard
             title="Larm per kategori (årstotal)"
             height={Math.max(250, catData.length * 30)}
+            info={CHART_INFO['Larm per kategori (årstotal)']}
             controls={<SortToggle sortMode={catSort} onChange={setCatSort} />}
           >
             <ResponsiveBar

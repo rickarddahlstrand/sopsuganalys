@@ -220,6 +220,7 @@ export default function GrenSection() {
           <ChartCard
             title={`Manuell andel per gren (${manualData.length} st)`}
             height={Math.max(250, manualData.length * 25)}
+            info={CHART_INFO['Manuell andel per gren']}
             controls={<>
               <SortToggle sortMode={manualSort} onChange={setManualSort} />
               {allManualBranches.length > 15 && (
@@ -249,7 +250,7 @@ export default function GrenSection() {
         )}
 
         {seasonData.length > 0 && (
-          <ChartCard title="Sommar vs vinter per gren (kommandon)" height={300}>
+          <ChartCard title="Sommar vs vinter per gren (kommandon)" height={300} info={CHART_INFO['Sommar vs vinter per gren (kommandon)']}>
             <ResponsiveBar
               data={seasonData}
               keys={['Sommar', 'Vinter']}

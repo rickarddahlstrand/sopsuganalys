@@ -70,12 +70,13 @@ export default function InfoButton({ text, size = 16 }) {
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        className="inline-flex items-center justify-center text-slate-400 hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400 transition-colors focus:outline-none"
+        className="inline-flex items-center justify-center text-slate-400 hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400 transition-colors focus:outline-none print:hidden"
         aria-label="Mer information"
       >
         <Info size={size} />
       </button>
       {tooltip}
+      <span className="hidden print:block text-[10px] leading-snug text-slate-500 whitespace-pre-line ml-2 max-w-xl">{text}</span>
     </span>
   )
 }

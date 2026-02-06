@@ -159,6 +159,7 @@ export default function ManuellSection() {
           <ChartCard
             title={`Manuell andel per gren (${branchData.length} st)`}
             height={Math.max(250, branchData.length * 25)}
+            info={CHART_INFO['Manuell andel per gren']}
             controls={<>
               <SortToggle sortMode={branchSort} onChange={setBranchSort} />
               {allBranches.length > 15 && (
