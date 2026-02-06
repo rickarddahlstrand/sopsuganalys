@@ -23,6 +23,8 @@ rapporter/*
 # Webapp
 webapp/node_modules/
 webapp/dist/
+!webapp/package.json
+!webapp/package-lock.json
 
 # OS
 .DS_Store
