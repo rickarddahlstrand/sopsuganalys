@@ -5,10 +5,12 @@ __pycache__/
 *.pyo
 
 # Output (genererade filer)
-output/
+output/*
+!output/.gitkeep
 
 # Rapporter (känslig driftdata)
-rapporter/
+rapporter/*
+!rapporter/.gitkeep
 *.xls
 *.xlsx
 

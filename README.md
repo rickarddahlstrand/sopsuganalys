@@ -96,10 +96,10 @@ Om du vill köra enskilda steg:
 ## Projektstruktur
 
 ```
-rapporter/          Månadsrapporter (.xls) — git-ignorerade
-scripts/            Python-analysscript
-  common.py         Delade hjälpare: filsökning, arkläsning, månadsnamn
-  metadata.py       Extraherar filstruktur till output/metadata.json
+rapporter/            Månadsrapporter (.xls) — git-ignorerade
+scripts/              Python-analysscript
+  common.py           Delade hjälpare: filsökning, arkläsning, månadsnamn
+  metadata.py         Extraherar filstruktur till output/metadata.json
   energi_drift.py     Sheet3+5+7 → energi_drift.csv + .png
   ventiler.py         Sheet9+11 → ventiler.csv + .png
   larm.py             Sheet13 → larm.csv + .png
@@ -112,10 +112,19 @@ scripts/            Python-analysscript
   rekommendationer.py Rekommendationer → JSON + CSV + TXT
   drifterfarenheter.py Felmönster & driftkvalitet → JSON + CSV
   rapport_pdf.py      Kompilerar allt → rapport_2025.pdf
-output/             Genererade resultat — git-ignorerade
-setup.sh            Installationsskript
-run.sh              Kör alla analyser
-CLAUDE.md           Regelverk för AI-assisterad datahantering
+tests/                Enhetstester för samtliga analysscript
+output/               Genererade resultat — git-ignorerade
+setup.sh              Installationsskript
+run.sh                Kör alla 12 analyssteg i rätt ordning
+requirements.txt      Python-beroenden
+CLAUDE.md             Regelverk för AI-assisterad datahantering
+LICENSE               CC BY 4.0
+```
+
+## Tester
+
+```bash
+.venv/bin/python3 -m pytest tests/
 ```
 
 ## Krav
