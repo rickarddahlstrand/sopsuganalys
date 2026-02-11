@@ -1,8 +1,22 @@
 # Sopsuganalys
 
-Detta analysverktyg kan användas för att analysera driftrapporter från sopsuganläggningar. Det läser servicerapporter (.xls) och genererar statistik, trender, rekommendationer och en sammanfattande PDF-rapport.
+Analysverktyg för driftrapporter från sopsuganläggningar. Läser servicerapporter (.xls) och genererar statistik, trender, rekommendationer och rapporter.
 
 Verktyget behandlar endast filer lokalt och ingen information laddas upp i molnet.
+
+## Två appar — samma analysuppdrag
+
+Projektet innehåller två fristående appar som löser samma grunduppgift på olika sätt:
+
+| | **Python-pipeline** (`pythonapp/`) | **Webapp** (`webapp/`) |
+|---|---|---|
+| **Syfte** | Genererar en komplett PDF-rapport med trendanalys, rekommendationer och drifterfarenheter | Interaktiv analys direkt i webbläsaren — ingen installation krävs |
+| **Körs** | Lokalt via terminalen (Python + venv) | I webbläsaren (React, deployas till Cloudflare Pages) |
+| **Input** | .xls-filer i `pythonapp/rapporter/` | .xls-filer laddas upp via drag-and-drop |
+| **Output** | CSV, PNG, JSON och PDF i `pythonapp/output/` | Diagram och tabeller direkt på skärmen |
+| **Beroende** | Python 3.9+, xlrd, pandas, matplotlib, scipy, fpdf2 | Node.js (för build), xlsx-biblioteket i webbläsaren |
+
+Apparna är helt oberoende av varandra och delar ingen kod.
 
 ## Datahantering
 
@@ -12,60 +26,47 @@ Rapportdata är känslig och hanteras enbart lokalt. Se [CLAUDE.md](CLAUDE.md) f
 
 Detta verktyg är skapat av Rickard Dahlstrand och licensierat under [Creative Commons Erkännande 4.0 Internationell (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
+---
 
-## Funktioner
+## Python-pipeline (`pythonapp/`)
+
+12-stegs analyskedja som producerar en professionell PDF-rapport.
+
+### Funktioner
 
 - **Energi & drift** — Energiförbrukning, drifttid, tömningar per fraktion, maskinstatistik
 - **Ventilanalys** — Tillgänglighet, felkoder, kommandostatistik per ventil och gren
 - **Larmanalys** — Larmkategorier per månad, jämförelse med föregående år
 - **Manuella körningar** — Andel manuell vs automatisk drift som mått på anläggningshälsa
-- **Anläggningssammanfattning** — Sheet1 discovery: extraherar KPI:er (tonnage, vakuumtryck, transportantal m.m.)
-- **Fraktionsanalys** — Fyllnadstider, genomströmning (tömning/minut), säsongsvariation per fraktion
+- **Anläggningssammanfattning** — Extraherar KPI:er (tonnage, vakuumtryck, transportantal m.m.)
+- **Fraktionsanalys** — Fyllnadstider, genomströmning, säsongsvariation per fraktion
 - **Grendjupanalys** — Grentyper (skola/bostad), säsongsmönster, Info-metadata per ventil
 - **Trendanalys** — Linjär regression, anomalidetektion (z-score), korrelationer, grenhälsopoäng
 - **Rekommendationer** — Regelbaserade åtgärdsförslag med prioritering och KPI-mål
 - **Drifterfarenheter** — Detaljanalys av felmönster, riskventiler och energieffektivitet
 - **PDF-rapport** — Professionell A4-rapport med alla analyser samlade
 
-## Snabbstart (macOS / Linux)
-
-### 1. Klona och installera
+### Snabbstart
 
 ```bash
-git clone https://github.com/rickarddahlstrand/sopsuganalys.git
-cd sopsuganalys
-./setup.sh
+cd pythonapp
+./setup.sh                    # Skapar .venv och installerar beroenden
 ```
 
-`setup.sh` skapar en virtuell Python-miljö (`.venv/`) och installerar alla beroenden.
-
-### 2. Lägg till rapporter
-
-Placera servicerapporter (.xls) i katalogen `rapporter/`:
-
-```
-rapporter/
-  report_1_2025.xls
-  report_2_2025.xls
-  ...
-  report_12_2025.xls
-```
-
-Filnamnen ska följa mönstret `*_<månadsnummer>_2025.xls`.
-
-### 3. Kör analyserna
+Placera servicerapporter (.xls) i `pythonapp/rapporter/` (filnamn: `*_<månadsnummer>_2025.xls`) och kör:
 
 ```bash
-./run.sh
+cd pythonapp
+./run.sh                      # Kör alla 12 analyssteg
 ```
 
-Alla analyser körs i rätt ordning och resultat sparas i `output/`. PDF-rapporten hamnar i `output/rapport_2025.pdf`.
+Resultat sparas i `pythonapp/output/`. PDF-rapporten hamnar i `pythonapp/output/rapport_2025.pdf`.
 
 ### Manuell körning
 
-Om du vill köra enskilda steg:
-
 ```bash
+cd pythonapp
+
 # Grundanalys
 .venv/bin/python3 scripts/energi_drift.py
 .venv/bin/python3 scripts/ventiler.py
@@ -73,9 +74,9 @@ Om du vill köra enskilda steg:
 .venv/bin/python3 scripts/dashboard.py
 
 # Utökade analyser (läser .xls direkt, ingen ordningsberoende)
-.venv/bin/python3 scripts/sammanfattning.py       # Sheet1 discovery
-.venv/bin/python3 scripts/fraktion_analys.py       # Fraktionsdjup
-.venv/bin/python3 scripts/gren_djupanalys.py       # Grendjup + Info-metadata
+.venv/bin/python3 scripts/sammanfattning.py
+.venv/bin/python3 scripts/fraktion_analys.py
+.venv/bin/python3 scripts/gren_djupanalys.py
 
 # Manuell analys
 .venv/bin/python3 scripts/manuell_analys.py
@@ -93,45 +94,85 @@ Om du vill köra enskilda steg:
 .venv/bin/python3 scripts/rapport_pdf.py
 ```
 
-## Projektstruktur
-
-```
-rapporter/            Månadsrapporter (.xls) — git-ignorerade
-scripts/              Python-analysscript
-  common.py           Delade hjälpare: filsökning, arkläsning, månadsnamn
-  metadata.py         Extraherar filstruktur till output/metadata.json
-  energi_drift.py     Sheet3+5+7 → energi_drift.csv + .png
-  ventiler.py         Sheet9+11 → ventiler.csv + .png
-  larm.py             Sheet13 → larm.csv + .png
-  dashboard.py        Samlar CSV:er → dashboard.png
-  sammanfattning.py   Sheet1 → sammanfattning.csv + kpi_lista.csv + .png
-  fraktion_analys.py  Sheet5 (alla kolumner) → fraktion_analys.csv + .png
-  gren_djupanalys.py  Sheet9+11 (Info) → gren_djupanalys.csv + gren_profiler.csv + .png
-  manuell_analys.py   Sheet9+11+3 → manuell_analys.csv + .png
-  trendanalys.py      Djupanalys → 5 CSV + 4 PNG
-  rekommendationer.py Rekommendationer → JSON + CSV + TXT
-  drifterfarenheter.py Felmönster & driftkvalitet → JSON + CSV
-  rapport_pdf.py      Kompilerar allt → rapport_2025.pdf
-tests/                Enhetstester för samtliga analysscript
-output/               Genererade resultat — git-ignorerade
-setup.sh              Installationsskript
-run.sh                Kör alla 12 analyssteg i rätt ordning
-requirements.txt      Python-beroenden
-CLAUDE.md             Regelverk för AI-assisterad datahantering
-LICENSE               CC BY 4.0
-```
-
-## Tester
+### Tester
 
 ```bash
+cd pythonapp
 .venv/bin/python3 -m pytest tests/
 ```
 
-## Krav
+### Krav
 
 - Python 3.9+
 - macOS eller Linux (Windows med WSL fungerar också)
 
-Beroenden installeras automatiskt via `setup.sh`:
-- xlrd, pandas, matplotlib, scipy, fpdf2
+Beroenden installeras automatiskt via `pythonapp/setup.sh`:
+xlrd, pandas, matplotlib, scipy, fpdf2
 
+---
+
+## Webapp (`webapp/`)
+
+Fristående React-app (Vite + Tailwind) som analyserar .xls-filer helt i webbläsaren. Ingen data lämnar användarens dator.
+
+### Lokal utveckling
+
+```bash
+cd webapp
+npm install
+npm run dev                   # Startar dev-server
+npm run build                 # Bygger till webapp/dist/
+```
+
+### Deploy till Cloudflare Pages
+
+#### Alternativ 1: Koppla GitHub-repo (rekommenderat)
+
+1. Logga in på [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Gå till **Workers & Pages** > **Create** > **Pages** > **Connect to Git**
+3. Välj ditt GitHub-repo `sopsuganalys`
+4. Konfigurera bygginställningar:
+
+   | Inställning | Värde |
+   |---|---|
+   | Framework preset | None |
+   | Build command | `cd webapp && npm install && npm run build` |
+   | Build output directory | `webapp/dist` |
+   | Root directory | `/` |
+   | Node.js version | `18` (eller högre) |
+
+5. Klicka **Save and Deploy**
+6. Cloudflare bygger och publicerar automatiskt vid varje push till `main`
+
+Om Node-version behöver sättas explicit, lägg till miljövariabeln `NODE_VERSION` = `20` under **Settings** > **Environment variables**.
+
+#### Alternativ 2: Direkt uppladdning
+
+1. Bygg lokalt: `cd webapp && npm install && npm run build`
+2. Gå till **Workers & Pages** > **Create** > **Pages** > **Upload assets**
+3. Dra in hela `webapp/dist/`-mappen
+4. Ge projektet ett namn och klicka **Deploy**
+
+#### Efter deploy
+
+- Sidan nås via `https://<projektnamn>.pages.dev`
+- Eget domännamn kan konfigureras under **Custom domains**
+- All analys sker i besökarens webbläsare — Cloudflare servar bara de statiska filerna
+
+---
+
+## Projektstruktur
+
+```
+pythonapp/                Python-analyskedja
+  scripts/                Analysscript (12 steg + common.py)
+  tests/                  Enhetstester
+  rapporter/              Månadsrapporter (.xls) — git-ignorerade
+  output/                 Genererade resultat — git-ignorerade
+  setup.sh                Installationsskript
+  run.sh                  Kör alla analyssteg i rätt ordning
+  requirements.txt        Python-beroenden
+webapp/                   React-app (Vite + Tailwind, Cloudflare Pages)
+CLAUDE.md                 Regelverk för AI-assisterad datahantering
+LICENSE                   CC BY 4.0
+```

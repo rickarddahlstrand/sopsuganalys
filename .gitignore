@@ -1,16 +1,16 @@
 # Python
-.venv/
+pythonapp/.venv/
 __pycache__/
 *.pyc
 *.pyo
 
 # Output (genererade filer)
-output/*
-!output/.gitkeep
+pythonapp/output/*
+!pythonapp/output/.gitkeep
 
 # Rapporter (känslig driftdata)
-rapporter/*
-!rapporter/.gitkeep
+pythonapp/rapporter/*
+!pythonapp/rapporter/.gitkeep
 *.xls
 *.xlsx
 
