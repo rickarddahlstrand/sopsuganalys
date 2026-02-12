@@ -123,7 +123,7 @@ export default function VentilerSection() {
         <KpiCard label="Totala fel" value={fmt(v.totalErrors)} icon={Activity} color="red" info={KPI_INFO['Totala fel']} />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Tillgänglighet per månad (medel/min/max)" height={300} info={CHART_INFO['Tillgänglighet per månad (medel/min/max)']}>
           <ResponsiveLine
             data={availLine}
@@ -136,9 +136,6 @@ export default function VentilerSection() {
             pointColor={{ theme: 'background' }}
             pointBorderWidth={2}
             pointBorderColor={{ from: 'serieColor' }}
-            enableArea
-            areaBaselineValue={availMin}
-            areaOpacity={0.05}
             yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
             useMesh
             enableSlices="x"

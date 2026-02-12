@@ -84,7 +84,7 @@ export default function ManuellSection() {
         <KpiCard label="Manuell andel" value={`${man.yearPct}%`} icon={Hand} color="orange" info={KPI_INFO['Manuell andel']} />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Automatiska vs manuella kommandon (stacked)" height={300} info={CHART_INFO['Automatiska vs manuella kommandon (stacked)']}>
           <ResponsiveBar
             data={stackedData}

@@ -34,7 +34,6 @@ export default function DashboardSection() {
   const energyData = energiDrift.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))
   const availPoints = ventiler?.monthlyAvailSummary?.map(m => ({ x: m.month, y: m.mean })) || []
   const availData = availPoints.length > 0 ? [{ id: 'Tillgänglighet', data: availPoints }] : []
-  const availMin = availPoints.length > 0 ? Math.min(...availPoints.map(d => d.y)) : 0
   const alarmData = larm?.monthlyTotals?.map(m => ({ month: m.month, Larm: m.total })) || []
 
   return (
@@ -48,7 +47,7 @@ export default function DashboardSection() {
         <KpiCard label="Grenar" value={fmt(branchCount)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Energi per månad" height={200} info={CHART_INFO['Energi per månad']}>
           <ResponsiveBar
             data={energyData}
@@ -79,9 +78,6 @@ export default function DashboardSection() {
               pointColor={{ theme: 'background' }}
               pointBorderWidth={2}
               pointBorderColor={{ from: 'serieColor' }}
-              enableArea
-              areaBaselineValue={availMin}
-              areaOpacity={0.1}
               yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
               useMesh
               enableSlices="x"
@@ -105,7 +101,7 @@ export default function DashboardSection() {
           />
         </ChartCard>
 
-        <ChartCard title="Fraktioner per månad" height={200} info={CHART_INFO['Fraktioner per månad']}>
+        <ChartCard title="Tömningar per fraktion" height={200} info={CHART_INFO['Tömningar per fraktion']}>
           {energiDrift.fractionNames.length > 0 && (
             <ResponsiveBar
               data={energiDrift.monthlyFractions}

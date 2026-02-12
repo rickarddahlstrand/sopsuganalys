@@ -24,7 +24,6 @@ export default function EnergiSection() {
 
   const driftPoints = ed.energy.map(e => ({ x: e.month, y: e.operationTimeH }))
   const driftData = [{ id: 'Drifttid', data: driftPoints }]
-  const driftMin = driftPoints.length > 0 ? Math.min(...driftPoints.map(d => d.y)) : 0
 
   return (
     <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}>
@@ -34,7 +33,7 @@ export default function EnergiSection() {
         <KpiCard label="Totala tömningar" value={fmt(ed.totalEmptyings)} icon={Zap} color="cyan" info={KPI_INFO['Totala tömningar']} />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Energiförbrukning per månad (kWh)" info={CHART_INFO['Energiförbrukning per månad (kWh)']}>
           <ResponsiveBar
             data={ed.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))}
@@ -81,9 +80,6 @@ export default function EnergiSection() {
             pointColor={{ theme: 'background' }}
             pointBorderWidth={2}
             pointBorderColor={{ from: 'serieColor' }}
-            enableArea
-            areaBaselineValue={driftMin}
-            areaOpacity={0.1}
             yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
             useMesh
             enableSlices="x"

@@ -109,12 +109,12 @@ export default function GrenSection() {
         <KpiCard label="Grentyper" value={Object.keys(typeCount).length} icon={GitBranch} color="blue" info={KPI_INFO['Grentyper']} />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Tillgänglighet per gren × månad (heatmap)" height={Math.max(350, gren.branches.length * 22)} info={CHART_INFO['Tillgänglighet per gren × månad (heatmap)']}>
           {heatmapData.length > 0 && (
             <ResponsiveHeatMap
               data={heatmapData}
-              theme={theme}
+              theme={{ ...theme, labels: { ...theme.labels, text: { ...theme.labels?.text, fontSize: 10 } } }}
               margin={{ top: 10, right: 60, bottom: 35, left: 80 }}
               axisTop={null}
               axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
@@ -136,6 +136,7 @@ export default function GrenSection() {
               borderColor={dark ? '#334155' : '#e2e8f0'}
               labelTextColor={({ value }) => value != null && value < 97 ? '#fff' : (dark ? '#1e293b' : '#1e293b')}
               hoverTarget="cell"
+              inactiveOpacity={0.8}
               animate={false}
             />
           )}

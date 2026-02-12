@@ -87,7 +87,7 @@ export default function LarmSection() {
         <KpiCard label="Trend" value={<StatusBadge status={l.trend === 'ökande' ? 'critical' : l.trend === 'minskande' ? 'ok' : 'info'} label={l.trend} />} icon={AlertTriangle} color="blue" info={KPI_INFO['Larmtrend']} />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Larm per månad" height={300} info={CHART_INFO['Larm per månad']}>
           <ResponsiveBar
             data={alarmBarData}

@@ -43,7 +43,7 @@ export default function SammanfattningSection() {
 
       {top6.length > 0 && (
         <div className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>:last-child:nth-child(odd)]:md:col-span-2">
             {(showAllCharts ? top6 : top6.slice(0, DEFAULT_CHART_LIMIT)).map(kpi => (
               <ChartCard key={kpi.key} title={`${kpi.key} ${kpi.unit ? `(${kpi.unit})` : ''}`} height={220} info={CHART_INFO['Sammanfattning — månatlig variation']}>
                 <ResponsiveBar

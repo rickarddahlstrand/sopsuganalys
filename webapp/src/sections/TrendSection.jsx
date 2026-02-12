@@ -41,7 +41,6 @@ export default function TrendSection() {
   // Manual percentage line
   const manualPctPoints = (man?.monthly || []).map(m => ({ x: m.month, y: m.manualPct }))
   const manualPctLine = [{ id: 'Manuell andel', data: manualPctPoints }]
-  const manualPctMin = manualPctPoints.length > 0 ? Math.min(...manualPctPoints.map(d => d.y)) : 0
 
   // Scatter: energy vs emptyings
   const scatterData = [{
@@ -154,7 +153,7 @@ export default function TrendSection() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Energi + MA(3) + trendlinje (kWh)" height={300} info={CHART_INFO['Energi + MA(3) + trendlinje (kWh)']}>
           {energyLine[0].data.length > 0 && (
             <ResponsiveLine
@@ -205,9 +204,7 @@ export default function TrendSection() {
               pointColor={{ theme: 'background' }}
               pointBorderWidth={2}
               pointBorderColor={{ from: 'serieColor' }}
-              enableArea
-              areaBaselineValue={manualPctMin}
-              areaOpacity={0.15}
+              enableArea={false}
               useMesh
               enableSlices="x"
               sliceTooltip={({ slice }) => (

@@ -66,7 +66,7 @@ export default function FraktionSection() {
 
   return (
     <SectionWrapper id="fraktioner" title="Fraktioner" icon={Layers} info={SECTION_INFO.fraktioner}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Tömningar per fraktion (stacked)" height={300} info={CHART_INFO['Tömningar per fraktion (stacked)']}>
           <ResponsiveBar
             data={stackedData}
@@ -123,7 +123,7 @@ export default function FraktionSection() {
           {heatmapData.length > 0 && (
             <ResponsiveHeatMap
               data={heatmapData}
-              theme={theme}
+              theme={{ ...theme, labels: { ...theme.labels, text: { ...theme.labels?.text, fontSize: 10 } } }}
               margin={{ top: 10, right: 60, bottom: 30, left: 80 }}
               axisTop={null}
               axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
@@ -132,6 +132,8 @@ export default function FraktionSection() {
               borderWidth={1}
               borderColor={dark ? '#334155' : '#e2e8f0'}
               labelTextColor={dark ? '#e2e8f0' : '#1e293b'}
+              hoverTarget="cell"
+              inactiveOpacity={0.8}
             />
           )}
         </ChartCard>

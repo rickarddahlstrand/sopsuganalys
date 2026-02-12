@@ -435,11 +435,11 @@ export const CHART_INFO = {
     'ansamlat avfall i lagringsenheter, sektioneringsventiler som stängt, eller förändringar i driften. ' +
     'Jämför med tömningsvolymen — om larm ökar i takt med tömningar är det normalt.',
 
-  'Fraktioner per månad':
-    'Tömningar uppdelat per avfallstyp (stacked).' +
+  'Tömningar per fraktion':
+    'Antal tömningscykler per avfallsfraktion och månad (stacked).' +
     '\n\n' +
-    'Det staplade diagrammet visar fördelningen mellan fraktioner: ' +
-    'Restavfall (ca 7 L/dag/lägenhet), Matavfall (ca 0,7 L) och Plastförpackningar (ca 3,6 L). ' +
+    'Varje färgsegment representerar en avfallsfraktion. Stapelhöjden visar antal tömningar — ' +
+    'inte vikt eller volym. Restavfall genererar normalt flest tömningar. ' +
     'Totalhöjden per månad visar den totala tömningsvolymen. ' +
     'En stabil fördelning tyder på normala avfallsmönster. Om en fraktion ' +
     'plötsligt ökar eller minskar kan det bero på ändrade sorteringsrutiner, ' +
@@ -752,6 +752,11 @@ export const CHART_INFO = {
     'Stigande kWh/tömning trots stabila tömningsvolymer indikerar att systemet ' +
     'förbrukar mer energi per cykel — möjliga orsaker: läckor i vakuumsystemet, ' +
     'slitage på pumpar, blockerade rör som kräver längre pumpning. ' +
+    'Den orangea linjen (MA(3) = glidande medelvärde över 3 månader) jämnar ut ' +
+    'månadsvariationer och visar den underliggande trenden tydligare. ' +
+    'Varje punkt på MA-linjen är medelvärdet av aktuell månad plus de två föregående, ' +
+    'vilket filtrerar bort tillfälliga toppar och dalar.' +
+    '\n\n' +
     'Detta mått bör följas upp månadsvis som en tidig varningsindikator.',
 
   'Energi vs tömningar (scatter)':
