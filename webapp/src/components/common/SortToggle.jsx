@@ -12,7 +12,7 @@ export default function SortToggle({ sortMode, onChange }) {
   return (
     <button
       onClick={() => onChange(next)}
-      className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+      className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors"
       title={`Sortering: ${label}`}
     >
       <Icon className="w-3 h-3" />

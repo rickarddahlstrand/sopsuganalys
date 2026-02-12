@@ -21,6 +21,9 @@ import RekommendationerSection from './sections/RekommendationerSection'
 
 const sections = [
   { id: 'dashboard', label: 'Överblick' },
+  { id: 'trender', label: 'Trender' },
+  { id: 'drifterfarenheter', label: 'Drift' },
+  { id: 'rekommendationer', label: 'Åtgärder' },
   { id: 'sammanfattning', label: 'Sammanfattning' },
   { id: 'energi', label: 'Energi' },
   { id: 'fraktioner', label: 'Fraktioner' },
@@ -28,9 +31,6 @@ const sections = [
   { id: 'grenar', label: 'Grenar' },
   { id: 'manuell', label: 'Manuell' },
   { id: 'larm', label: 'Larm' },
-  { id: 'trender', label: 'Trender' },
-  { id: 'drifterfarenheter', label: 'Drift' },
-  { id: 'rekommendationer', label: 'Åtgärder' },
 ]
 
 function InfoHint() {
@@ -120,6 +120,9 @@ export default function App() {
       <InfoHint />
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16 space-y-12 mt-4">
         <DashboardSection />
+        <TrendSection />
+        <DrifterfarenheterSection />
+        <RekommendationerSection />
         <SammanfattningSection />
         <EnergiSection />
         <FraktionSection />
@@ -127,9 +130,6 @@ export default function App() {
         <GrenSection />
         <ManuellSection />
         <LarmSection />
-        <TrendSection />
-        <DrifterfarenheterSection />
-        <RekommendationerSection />
       </main>
       <Footer />
     </div>

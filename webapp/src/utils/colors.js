@@ -22,6 +22,15 @@ export const ERROR_COLORS = {
   ERROR_FEEDBACK_FROM_USER: '#a855f7',
 }
 
+// Swedish translations for error type names
+export const ERROR_NAMES_SV = {
+  DOES_NOT_CLOSE: 'Stänger ej',
+  DOES_NOT_OPEN: 'Öppnar ej',
+  LEVEL_ERROR: 'Nivåfel',
+  LONG_TIME_SINCE_LAST_COLLECTION: 'Ej tömd länge',
+  ERROR_FEEDBACK_FROM_USER: 'Användarfel',
+}
+
 export const STATUS_COLORS = {
   critical: '#ef4444',
   warning: '#f97316',

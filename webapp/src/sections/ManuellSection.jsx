@@ -130,7 +130,7 @@ export default function ManuellSection() {
             controls={<>
               <SortToggle sortMode={top15Sort} onChange={setTop15Sort} />
               {allManualValves.length > 15 && (
-                <button onClick={() => setShowAllValves(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                <button onClick={() => setShowAllValves(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
                   {showAllValves ? <><ChevronUp className="w-3 h-3" />Visa 15</> : <><ChevronDown className="w-3 h-3" />Alla ({allManualValves.length})</>}
                 </button>
               )}
@@ -163,7 +163,7 @@ export default function ManuellSection() {
             controls={<>
               <SortToggle sortMode={branchSort} onChange={setBranchSort} />
               {allBranches.length > 15 && (
-                <button onClick={() => setShowAllBranches(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                <button onClick={() => setShowAllBranches(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
                   {showAllBranches ? <><ChevronUp className="w-3 h-3" />Visa 15</> : <><ChevronDown className="w-3 h-3" />Alla ({allBranches.length})</>}
                 </button>
               )}

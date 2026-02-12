@@ -36,6 +36,8 @@ cd pythonapp
 .venv/bin/python3 scripts/<script>.py   # Kör enskilt script
 ```
 
+Rapportfiler placeras i `pythonapp/rapporter/` med namnmönstret `*_<månadsnummer>_2025.xls` (t.ex. `facility_1_2025.xls` för januari).
+
 ### Tester
 
 ```bash
@@ -75,6 +77,12 @@ Script 1-4 producerar CSV:er till `pythonapp/output/` som konsumeras nedströms.
 ### Webapp (`webapp/`)
 
 Fristående React-app (Vite + Tailwind) som analyserar `.xls`-filer helt i webbläsaren via `xlsx`-biblioteket. Deployas till Cloudflare Pages. Inget beroende till Python-scripten.
+
+Nyckelkataloger:
+- `src/analysis/` — Analyslogik (speglar Python-scripten)
+- `src/parsers/` — XLS-filparsning via xlsx-biblioteket
+- `src/sections/` — Sidokomponenter (en per analystyp)
+- `src/context/` — Global state (DataContext)
 
 ### Tester (`pythonapp/tests/`)
 

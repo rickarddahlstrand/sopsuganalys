@@ -1,12 +1,10 @@
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, TrendingDown, Zap, AlertTriangle, Sun, Hand, Bot } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, fmt2 } from '../utils/formatters'
 import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
-import KpiGrid from '../components/common/KpiGrid'
-import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import StatusBadge from '../components/common/StatusBadge'
@@ -19,6 +17,7 @@ export default function TrendSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const t = state.trendanalys
+  const man = state.manuellAnalys
 
   if (!t) return <SectionWrapper id="trender" title="Trender" icon={TrendingUp} info={SECTION_INFO.trender}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -37,6 +36,15 @@ export default function TrendSection() {
     { id: 'kWh/tömning', data: fd.map(d => ({ x: d.month, y: d.kwhPerEmptying })) },
     { id: 'MA(3)', data: fd.filter((d, i) => t.kwhPerEmptyMA[i] != null).map((d, i) => ({ x: d.month, y: t.kwhPerEmptyMA[i] })) },
   ]
+
+  // Manual percentage line
+  const manualPctLine = [{
+    id: 'Manuell andel',
+    data: (man?.monthly || []).map(m => ({
+      x: m.month,
+      y: m.manualPct,
+    })),
+  }]
 
   // Scatter: energy vs emptyings
   const scatterData = [{
@@ -88,14 +96,66 @@ export default function TrendSection() {
     type: a.type,
   }))
 
+  // KPI values
+  const trendClass = ft.energi?.trendClass || '–'
+  const rSquared = ft.energi?.rSquared != null ? ft.energi.rSquared.toFixed(3) : '–'
+  const pearsonR = ft.energi?.pearsonR != null ? ft.energi.pearsonR.toFixed(3) : (corrRows[0]?.pearsonR || '–')
+  const pValue = ft.energi?.pValue != null ? (ft.energi.pValue < 0.001 ? '<0.001' : ft.energi.pValue.toFixed(3)) : (corrRows[0]?.pValue || '–')
+  const anomalyCount = t.anomalies?.length || 0
+  const hasSeasonal = t.seasonalEnergy?.hasSeasonal
+
   return (
     <SectionWrapper id="trender" title="Trender" icon={TrendingUp} info={SECTION_INFO.trender}>
-      <KpiGrid>
-        <KpiCard label="Energitrend" value={<StatusBadge status={ft.energi?.trendClass === 'minskande' ? 'ok' : ft.energi?.trendClass === 'ökande' ? 'critical' : 'info'} label={ft.energi?.trendClass || '–'} />} icon={TrendingUp} color="yellow" />
-        <KpiCard label="R²" value={ft.energi?.rSquared != null ? ft.energi.rSquared.toFixed(3) : '–'} icon={TrendingUp} color="blue" />
-        <KpiCard label="Anomalier" value={fmt(t.anomalies?.length)} icon={TrendingUp} color="red" />
-        <KpiCard label="Säsongsmönster" value={t.seasonalEnergy?.hasSeasonal ? 'Ja' : 'Nej'} icon={TrendingUp} color="emerald" />
-      </KpiGrid>
+      {/* KPI cards - 4 on one row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Energitrend */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`p-2.5 rounded-xl ${trendClass === 'minskande' ? 'bg-emerald-100 dark:bg-emerald-900/50' : trendClass === 'ökande' ? 'bg-red-100 dark:bg-red-900/50' : 'bg-blue-100 dark:bg-blue-900/50'}`}>
+              {trendClass === 'minskande' ? <TrendingDown className="w-6 h-6 text-emerald-600 dark:text-emerald-400" /> : trendClass === 'ökande' ? <TrendingUp className="w-6 h-6 text-red-600 dark:text-red-400" /> : <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Energitrend</p>
+          </div>
+          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 capitalize">{trendClass}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">R² = {rSquared}</p>
+        </div>
+
+        {/* Korrelation */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/50">
+              <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Korrelation</p>
+          </div>
+          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">r = {pearsonR}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">p-värde: {pValue}</p>
+        </div>
+
+        {/* Anomalier */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`p-2.5 rounded-xl ${anomalyCount > 0 ? 'bg-red-100 dark:bg-red-900/50' : 'bg-emerald-100 dark:bg-emerald-900/50'}`}>
+              <AlertTriangle className={`w-6 h-6 ${anomalyCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Anomalier</p>
+          </div>
+          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{anomalyCount} st</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{anomalyCount === 0 ? 'Inga avvikelser' : 'Avvikande värden'}</p>
+        </div>
+
+        {/* Säsongsmönster */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`p-2.5 rounded-xl ${hasSeasonal ? 'bg-orange-100 dark:bg-orange-900/50' : 'bg-slate-100 dark:bg-slate-700/50'}`}>
+              <Sun className={`w-6 h-6 ${hasSeasonal ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'}`} />
+            </div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Säsong</p>
+          </div>
+          <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{hasSeasonal ? 'Ja' : 'Nej'}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{hasSeasonal ? 'Säsongsmönster finns' : 'Jämn förbrukning'}</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         <ChartCard title="Energi + MA(3) + trendlinje (kWh)" height={300} info={CHART_INFO['Energi + MA(3) + trendlinje (kWh)']}>
@@ -129,6 +189,37 @@ export default function TrendSection() {
               useMesh
               enableSlices="x"
               legends={[{ anchor: 'right', direction: 'column', translateX: 90, itemWidth: 80, itemHeight: 18, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
+            />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Manuell andel per månad (%)" height={300} info={CHART_INFO['Manuella vs automatiska körningar'] || 'Visar andelen manuella ventilkommandon i procent per månad. Hög andel manuella körningar kan indikera problem med automatiken.'}>
+          {manualPctLine[0].data.length > 0 && (
+            <ResponsiveLine
+              data={manualPctLine}
+              theme={theme}
+              colors={['#a855f7']}
+              margin={{ top: 10, right: 20, bottom: 35, left: 55 }}
+              xScale={{ type: 'point' }}
+              yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
+              axisLeft={{ tickSize: 0, tickPadding: 5, format: v => `${v}%` }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              pointSize={8}
+              pointColor={{ theme: 'background' }}
+              pointBorderWidth={2}
+              pointBorderColor={{ from: 'serieColor' }}
+              enableArea
+              areaOpacity={0.15}
+              useMesh
+              enableSlices="x"
+              sliceTooltip={({ slice }) => (
+                <div className="bg-white dark:bg-slate-800 px-3 py-2 rounded shadow-lg border border-slate-200 dark:border-slate-700">
+                  <strong className="text-sm">{slice.points[0].data.x}</strong>
+                  <div className="text-sm text-purple-600 dark:text-purple-400">
+                    Manuell: {slice.points[0].data.y}%
+                  </div>
+                </div>
+              )}
             />
           )}
         </ChartCard>

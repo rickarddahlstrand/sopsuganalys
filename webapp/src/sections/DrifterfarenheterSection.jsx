@@ -1,8 +1,8 @@
 import { Search } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { useTheme } from '../context/ThemeContext'
 import { fmt, fmt1, fmt2, pct } from '../utils/formatters'
 import { SECTION_INFO } from '../utils/descriptions'
+import { ERROR_NAMES_SV } from '../utils/colors'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -85,7 +85,7 @@ export default function DrifterfarenheterSection() {
               { key: 'manualPct', label: 'Manuell%', render: v => `${v}%` },
               { key: 'availability', label: 'Tillgänglighet', render: v => v != null ? pct(v) : '–' },
               { key: 'totalErrors', label: 'Fel', render: v => fmt(v) },
-              { key: 'dominantError', label: 'Dominerande fel' },
+              { key: 'dominantError', label: 'Dominerande fel', render: v => ERROR_NAMES_SV[v] || v },
             ]}
             data={riskValves}
           />
@@ -98,7 +98,7 @@ export default function DrifterfarenheterSection() {
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Korrelation: manuella ingrepp vs feltyper</h4>
           <DataTable
             columns={[
-              { key: 'errorType', label: 'Feltyp' },
+              { key: 'errorType', label: 'Feltyp', render: v => ERROR_NAMES_SV[v] || v },
               { key: 'pearsonR', label: 'Pearson r' },
               { key: 'pValue', label: 'p-värde' },
               { key: 'totalCount', label: 'Antal fel' },
@@ -139,7 +139,7 @@ export default function DrifterfarenheterSection() {
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Feltypsfördelning</h4>
           <DataTable
             columns={[
-              { key: 'type', label: 'Feltyp' },
+              { key: 'type', label: 'Feltyp', render: v => ERROR_NAMES_SV[v] || v },
               { key: 'count', label: 'Antal', render: v => fmt(v) },
               { key: 'pct', label: 'Andel', render: v => `${v}%` },
             ]}

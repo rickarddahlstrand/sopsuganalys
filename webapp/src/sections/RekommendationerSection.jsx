@@ -48,7 +48,7 @@ export default function RekommendationerSection() {
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               filter === tab.value
                 ? 'bg-blue-500 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700/80'
             }`}
           >
             {tab.label}

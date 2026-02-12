@@ -18,13 +18,13 @@ export default function ChartCard({ title, height = 300, info, controls, childre
             {controls}
             <button
               onClick={() => setExpanded(true)}
-              className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/70 text-slate-400 transition-colors"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div style={{ height }} className="p-2">
+        <div style={{ height }} className="p-2 overflow-hidden">
           {children}
         </div>
       </div>

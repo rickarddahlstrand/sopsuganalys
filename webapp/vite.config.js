@@ -6,4 +6,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  server: {
+    allowedHosts: ['app1-sopsuganalys-dev-server.gapingvoid.net'],
+  },
 })

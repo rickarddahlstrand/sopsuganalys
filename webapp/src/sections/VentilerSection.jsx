@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Activity, ChevronDown, ChevronUp } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, pct } from '../utils/formatters'
-import { ERROR_COLORS } from '../utils/colors'
+import { ERROR_COLORS, ERROR_NAMES_SV } from '../utils/colors'
 import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
@@ -27,6 +27,19 @@ export default function VentilerSection() {
 
   const [showAllChart, setShowAllChart] = useState(false)
   const [showAllTable, setShowAllTable] = useState(false)
+  const [hiddenSeries, setHiddenSeries] = useState(new Set())
+
+  const toggleSeries = useCallback((id) => {
+    setHiddenSeries(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
 
   if (!v) return <SectionWrapper id="ventiler" title="Ventilhälsa" icon={Activity} info={SECTION_INFO.ventiler}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -58,22 +71,34 @@ export default function VentilerSection() {
     return <path d={d} fill={dark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'} />
   }
 
-  // Error types stacked bar
+  // Error types stacked bar - translate to Swedish
   const errorKeys = v.errorNames
+  const errorKeysSv = errorKeys.map(k => ERROR_NAMES_SV[k] || k)
   const errorBarData = v.monthlyErrors.map(m => {
     const obj = { month: m.month }
-    for (const k of errorKeys) obj[k] = m[k] || 0
+    for (let i = 0; i < errorKeys.length; i++) {
+      obj[errorKeysSv[i]] = m[errorKeys[i]] || 0
+    }
     return obj
   })
   const errorColors = errorKeys.map(k => ERROR_COLORS[k] || '#94a3b8')
 
-  // Worst valves spaghetti lines
+  // Worst valves spaghetti lines - sort by sortKey for correct chronological order
+  // Build month lookup from sorted data
+  const sortedMonths = [...new Set(v.availability.map(a => a.sortKey))]
+    .sort((a, b) => a - b)
+    .map(sk => {
+      const item = v.availability.find(a => a.sortKey === sk)
+      return { sortKey: sk, month: item?.month || '' }
+    })
+  const monthLookup = Object.fromEntries(sortedMonths.map(m => [m.sortKey, m.month]))
+
   const worstLines = chartData.map(w => ({
     id: w.valveId,
     data: v.availability
       .filter(a => a.valveId === w.valveId)
-      .sort((a, b) => a.monthNum - b.monthNum)
-      .map(a => ({ x: a.month, y: a.availability })),
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(a => ({ x: a.sortKey, y: a.availability, month: a.month })),
   })).filter(l => l.data.length > 0)
 
   // Availability histogram (bucket per 1%)
@@ -123,7 +148,7 @@ export default function VentilerSection() {
         <ChartCard title="Feltyper per månad (stacked)" height={300} info={CHART_INFO['Feltyper per månad (stacked)']}>
           <ResponsiveBar
             data={errorBarData}
-            keys={errorKeys}
+            keys={errorKeysSv}
             indexBy="month"
             theme={theme}
             groupMode="stacked"
@@ -145,27 +170,54 @@ export default function VentilerSection() {
           controls={allWorst.length > DEFAULT_CHART_LIMIT && (
             <button
               onClick={() => setShowAllChart(s => !s)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors"
             >
               {showAllChart ? <><ChevronUp className="w-3 h-3" />Visa {DEFAULT_CHART_LIMIT}</> : <><ChevronDown className="w-3 h-3" />Visa alla ({allWorst.length})</>}
             </button>
           )}
         >
-          {worstLines.length > 0 && (
-            <ResponsiveLine
-              data={worstLines}
-              theme={theme}
-              margin={{ top: 10, right: 90, bottom: 35, left: 55 }}
-              axisLeft={{ tickSize: 0, tickPadding: 5 }}
-              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
-              pointSize={4}
-              colors={{ scheme: 'category10' }}
-              yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
-              useMesh
-              enableSlices="x"
-              legends={[{ anchor: 'right', direction: 'column', translateX: 90, itemWidth: 80, itemHeight: 14, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
-            />
-          )}
+          {worstLines.length > 0 && (() => {
+            // Generate colors for all lines using category10 scheme
+            const category10 = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+            const lineColors = worstLines.map((_, i) => category10[i % category10.length])
+            const visibleLines = worstLines.filter(line => !hiddenSeries.has(line.id))
+
+            return (
+              <ResponsiveLine
+                data={visibleLines}
+                theme={theme}
+                margin={{ top: 10, right: 90, bottom: 35, left: 55 }}
+                xScale={{ type: 'point' }}
+                axisLeft={{ tickSize: 0, tickPadding: 5 }}
+                axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45, format: x => monthLookup[x] || x }}
+                pointSize={4}
+                colors={visibleLines.map(line => {
+                  const origIndex = worstLines.findIndex(l => l.id === line.id)
+                  return lineColors[origIndex]
+                })}
+                yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
+                useMesh
+                enableSlices="x"
+                legends={[{
+                  anchor: 'right',
+                  direction: 'column',
+                  translateX: 90,
+                  itemWidth: 80,
+                  itemHeight: 14,
+                  symbolSize: 10,
+                  onClick: (datum) => toggleSeries(datum.id),
+                  effects: [{ on: 'hover', style: { itemOpacity: 1 } }],
+                  data: worstLines.map((line, i) => ({
+                    id: line.id,
+                    label: line.id,
+                    color: hiddenSeries.has(line.id) ? '#cbd5e1' : lineColors[i],
+                  })),
+                  itemOpacity: 0.85,
+                  itemTextColor: dark ? '#94a3b8' : '#64748b',
+                }]}
+              />
+            )
+          })()}
         </ChartCard>
 
         <ChartCard title="Tillgänglighetsfördelning (histogram)" height={300} info={CHART_INFO['Tillgänglighetsfördelning (histogram)']}>
