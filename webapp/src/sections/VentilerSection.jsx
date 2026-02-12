@@ -5,13 +5,14 @@ import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, pct } from '../utils/formatters'
 import { ERROR_COLORS, ERROR_NAMES_SV } from '../utils/colors'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import StatusBadge from '../components/common/StatusBadge'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
@@ -50,10 +51,9 @@ export default function VentilerSection() {
   const tableData = allWorst.slice(0, tableLimit)
 
   // Availability line with min/max band
-  const availLine = [{
-    id: 'Medel',
-    data: v.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean })),
-  }]
+  const availPoints = v.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
+  const availLine = [{ id: 'Medel', data: availPoints }]
+  const availMin = availPoints.length > 0 ? Math.min(...availPoints.map(d => d.y)) : 0
 
   const minMaxLayer = ({ xScale, yScale }) => {
     if (!v.monthlyAvailSummary.length) return null
@@ -118,9 +118,9 @@ export default function VentilerSection() {
   return (
     <SectionWrapper id="ventiler" title="Ventilhälsa" icon={Activity} info={SECTION_INFO.ventiler}>
       <KpiGrid>
-        <KpiCard label="Ventiler" value={fmt(v.uniqueValves)} icon={Activity} color="blue" />
-        <KpiCard label="Medeltillgänglighet" value={pct(v.overallAvail)} icon={Activity} color="emerald" />
-        <KpiCard label="Totala fel" value={fmt(v.totalErrors)} icon={Activity} color="red" />
+        <KpiCard label="Ventiler" value={fmt(v.uniqueValves)} icon={Activity} color="blue" info={KPI_INFO['Ventiler']} />
+        <KpiCard label="Medeltillgänglighet" value={pct(v.overallAvail)} icon={Activity} color="emerald" info={KPI_INFO['Medeltillgänglighet']} />
+        <KpiCard label="Totala fel" value={fmt(v.totalErrors)} icon={Activity} color="red" info={KPI_INFO['Totala fel']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -137,6 +137,7 @@ export default function VentilerSection() {
             pointBorderWidth={2}
             pointBorderColor={{ from: 'serieColor' }}
             enableArea
+            areaBaselineValue={availMin}
             areaOpacity={0.05}
             yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
             useMesh
@@ -240,7 +241,7 @@ export default function VentilerSection() {
       {tableData.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400">Sämsta ventilerna</h4>
+            <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Sämsta ventilerna<InfoButton text={TABLE_INFO['Sämsta ventilerna']} size={14} /></h4>
             {allWorst.length > DEFAULT_TABLE_LIMIT && (
               <button
                 onClick={() => setShowAllTable(s => !s)}

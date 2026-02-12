@@ -5,13 +5,14 @@ import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, pct } from '../utils/formatters'
 import { manualColor } from '../utils/colors'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import SortToggle from '../components/common/SortToggle'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
@@ -78,9 +79,9 @@ export default function ManuellSection() {
   return (
     <SectionWrapper id="manuell" title="Manuella körningar" icon={Hand} info={SECTION_INFO.manuell}>
       <KpiGrid>
-        <KpiCard label="Manuella kommandon" value={fmt(man.totalMan)} icon={Hand} color="purple" />
-        <KpiCard label="Totala kommandon" value={fmt(man.totalAll)} icon={Hand} color="blue" />
-        <KpiCard label="Manuell andel" value={`${man.yearPct}%`} icon={Hand} color="orange" />
+        <KpiCard label="Manuella kommandon" value={fmt(man.totalMan)} icon={Hand} color="purple" info={KPI_INFO['Manuella kommandon']} />
+        <KpiCard label="Totala kommandon" value={fmt(man.totalAll)} icon={Hand} color="blue" info={KPI_INFO['Totala kommandon']} />
+        <KpiCard label="Manuell andel" value={`${man.yearPct}%`} icon={Hand} color="orange" info={KPI_INFO['Manuell andel']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -192,7 +193,7 @@ export default function ManuellSection() {
       {tableValves.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400">Manuella ventiler</h4>
+            <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Manuella ventiler<InfoButton text={TABLE_INFO['Manuella ventiler']} size={14} /></h4>
             {allManualValves.length > 15 && (
               <button
                 onClick={() => setShowAllTable(s => !s)}

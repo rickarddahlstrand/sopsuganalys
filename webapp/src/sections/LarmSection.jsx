@@ -4,12 +4,13 @@ import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt } from '../utils/formatters'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import StatusBadge from '../components/common/StatusBadge'
 import SortToggle from '../components/common/SortToggle'
 import { ResponsiveBar } from '@nivo/bar'
@@ -80,10 +81,10 @@ export default function LarmSection() {
   return (
     <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}>
       <KpiGrid>
-        <KpiCard label="Totala larm" value={fmt(l.totalAlarms)} icon={AlertTriangle} color="red" />
-        <KpiCard label="H1 medel/mån" value={fmt(l.h1Avg)} icon={AlertTriangle} color="orange" />
-        <KpiCard label="H2 medel/mån" value={fmt(l.h2Avg)} icon={AlertTriangle} color="yellow" />
-        <KpiCard label="Trend" value={<StatusBadge status={l.trend === 'ökande' ? 'critical' : l.trend === 'minskande' ? 'ok' : 'info'} label={l.trend} />} icon={AlertTriangle} color="blue" />
+        <KpiCard label="Totala larm" value={fmt(l.totalAlarms)} icon={AlertTriangle} color="red" info={KPI_INFO['Totala larm']} />
+        <KpiCard label="H1 medel/mån" value={fmt(l.h1Avg)} icon={AlertTriangle} color="orange" info={KPI_INFO['H1 medel/mån']} />
+        <KpiCard label="H2 medel/mån" value={fmt(l.h2Avg)} icon={AlertTriangle} color="yellow" info={KPI_INFO['H2 medel/mån']} />
+        <KpiCard label="Trend" value={<StatusBadge status={l.trend === 'ökande' ? 'critical' : l.trend === 'minskande' ? 'ok' : 'info'} label={l.trend} />} icon={AlertTriangle} color="blue" info={KPI_INFO['Larmtrend']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -167,7 +168,7 @@ export default function LarmSection() {
 
       {alarmAnomalies.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Larmanomalier</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Larmanomalier<InfoButton text={TABLE_INFO['Larmanomalier']} size={14} /></h4>
           <div className="space-y-2">
             {alarmAnomalies.map((a, i) => (
               <div key={i} className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 rounded-lg px-4 py-2">

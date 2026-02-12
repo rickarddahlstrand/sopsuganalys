@@ -17,11 +17,11 @@ export default function KpiGrid({ children }) {
       initial="hidden"
       whileInView="show"
       viewport={{ once: true }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      className="flex flex-wrap gap-4"
     >
       {Array.isArray(children) ? children.map((child, i) => (
-        <motion.div key={i} variants={item}>{child}</motion.div>
-      )) : <motion.div variants={item}>{children}</motion.div>}
+        <motion.div key={i} variants={item} className="flex-1 basis-48 min-w-0">{child}</motion.div>
+      )) : <motion.div variants={item} className="flex-1 basis-48 min-w-0">{children}</motion.div>}
     </motion.div>
   )
 }

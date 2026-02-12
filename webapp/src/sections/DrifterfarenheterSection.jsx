@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { fmt, fmt1, fmt2, pct } from '../utils/formatters'
-import { SECTION_INFO } from '../utils/descriptions'
+import { SECTION_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import { ERROR_NAMES_SV } from '../utils/colors'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
@@ -9,6 +9,7 @@ import KpiCard from '../components/common/KpiCard'
 import DataTable from '../components/common/DataTable'
 import StatusBadge from '../components/common/StatusBadge'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 
 export default function DrifterfarenheterSection() {
   const { state } = useData()
@@ -54,22 +55,22 @@ export default function DrifterfarenheterSection() {
       {/* Energy efficiency KPIs */}
       {energy?.kwhPerEmptyingMean != null && (
         <KpiGrid>
-          <KpiCard label="kWh/tömning (medel)" value={fmt2(energy.kwhPerEmptyingMean)} icon={Search} color="yellow" />
-          <KpiCard label="Bästa månad" value={`${energy.bestMonth} (${fmt2(energy.kwhPerEmptyingMin)})`} icon={Search} color="emerald" />
-          <KpiCard label="Sämsta månad" value={`${energy.worstMonth} (${fmt2(energy.kwhPerEmptyingMax)})`} icon={Search} color="red" />
-          <KpiCard label="Spridning" value={`${energy.spreadPct}%`} icon={Search} color="orange" />
+          <KpiCard label="kWh/tömning (medel)" value={fmt2(energy.kwhPerEmptyingMean)} icon={Search} color="yellow" info={KPI_INFO['kWh/tömning (medel)']} />
+          <KpiCard label="Bästa månad" value={`${energy.bestMonth} (${fmt2(energy.kwhPerEmptyingMin)})`} icon={Search} color="emerald" info={KPI_INFO['Bästa energimånad']} />
+          <KpiCard label="Sämsta månad" value={`${energy.worstMonth} (${fmt2(energy.kwhPerEmptyingMax)})`} icon={Search} color="red" info={KPI_INFO['Sämsta energimånad']} />
+          <KpiCard label="Spridning" value={`${energy.spreadPct}%`} icon={Search} color="orange" info={KPI_INFO['Energispridning']} />
         </KpiGrid>
       )}
 
       {/* Manual trend KPIs */}
       {manualTrend?.yearPct != null && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Manuella körningar</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Manuella körningar<InfoButton text={TABLE_INFO['Manuella körningar']} size={14} /></h4>
           <KpiGrid>
-            <KpiCard label="Manuell andel (år)" value={`${manualTrend.yearPct}%`} icon={Search} color="purple" />
-            <KpiCard label="H1" value={`${manualTrend.h1Pct}%`} icon={Search} color="blue" />
-            <KpiCard label="H2" value={`${manualTrend.h2Pct}%`} icon={Search} color="cyan" />
-            <KpiCard label="Sämsta månad" value={`${manualTrend.worstMonth} (${manualTrend.worstMonthPct}%)`} icon={Search} color="red" />
+            <KpiCard label="Manuell andel (år)" value={`${manualTrend.yearPct}%`} icon={Search} color="purple" info={KPI_INFO['Manuell andel (år)']} />
+            <KpiCard label="H1" value={`${manualTrend.h1Pct}%`} icon={Search} color="blue" info={KPI_INFO['Manuell H1']} />
+            <KpiCard label="H2" value={`${manualTrend.h2Pct}%`} icon={Search} color="cyan" info={KPI_INFO['Manuell H2']} />
+            <KpiCard label="Sämsta månad" value={`${manualTrend.worstMonth} (${manualTrend.worstMonthPct}%)`} icon={Search} color="red" info={KPI_INFO['Sämsta manuellmånad']} />
           </KpiGrid>
         </div>
       )}
@@ -77,7 +78,7 @@ export default function DrifterfarenheterSection() {
       {/* Risk valves */}
       {riskValves.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Riskventiler (hög manuell + hög tillgänglighet)</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Riskventiler (hög manuell + hög tillgänglighet)<InfoButton text={TABLE_INFO['Riskventiler']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'valve', label: 'Ventil' },
@@ -95,7 +96,7 @@ export default function DrifterfarenheterSection() {
       {/* Error correlations */}
       {corrRows.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Korrelation: manuella ingrepp vs feltyper</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Korrelation: manuella ingrepp vs feltyper<InfoButton text={TABLE_INFO['Korrelation manuella vs feltyper']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'errorType', label: 'Feltyp', render: v => ERROR_NAMES_SV[v] || v },
@@ -111,7 +112,7 @@ export default function DrifterfarenheterSection() {
       {/* Alarm patterns */}
       {alarms?.totalAlarms != null && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Larmmönster</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Larmmönster<InfoButton text={TABLE_INFO['Larmmönster']} size={14} /></h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
               <div className="text-xs text-slate-500 dark:text-slate-400">Totala larm</div>
@@ -136,7 +137,7 @@ export default function DrifterfarenheterSection() {
       {/* Error type distribution */}
       {errorDist.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Feltypsfördelning</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Feltypsfördelning<InfoButton text={TABLE_INFO['Feltypsfördelning']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'type', label: 'Feltyp', render: v => ERROR_NAMES_SV[v] || v },

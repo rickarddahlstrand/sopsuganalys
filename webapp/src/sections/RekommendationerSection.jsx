@@ -3,11 +3,12 @@ import { ClipboardCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useData } from '../context/DataContext'
 import { fmt } from '../utils/formatters'
-import { SECTION_INFO } from '../utils/descriptions'
+import { SECTION_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import DataTable from '../components/common/DataTable'
 import StatusBadge from '../components/common/StatusBadge'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 
 const PRIO_COLORS = {
   1: 'critical',
@@ -109,7 +110,7 @@ export default function RekommendationerSection() {
       {/* Strategic goals */}
       {goals.length > 0 && (
         <div className="mt-8">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Strategiska mål (KPI)</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Strategiska mål (KPI)<InfoButton text={TABLE_INFO['Strategiska mål']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'kpi', label: 'KPI' },
@@ -127,7 +128,7 @@ export default function RekommendationerSection() {
       {/* Operator agenda */}
       {agenda && (
         <div className="mt-8">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Operatörsagenda</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Operatörsagenda<InfoButton text={TABLE_INFO['Operatörsagenda']} size={14} /></h4>
 
           {agenda.facilityStatus && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">

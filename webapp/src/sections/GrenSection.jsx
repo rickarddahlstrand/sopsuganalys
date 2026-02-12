@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, pct } from '../utils/formatters'
 import { healthColor } from '../utils/colors'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -13,6 +13,7 @@ import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import StatusBadge from '../components/common/StatusBadge'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import SortToggle from '../components/common/SortToggle'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
@@ -104,8 +105,8 @@ export default function GrenSection() {
   return (
     <SectionWrapper id="grenar" title="Grenanalys" icon={GitBranch} info={SECTION_INFO.grenar}>
       <KpiGrid>
-        <KpiCard label="Grenar" value={fmt(gren.totalBranches)} icon={GitBranch} color="orange" />
-        <KpiCard label="Grentyper" value={Object.keys(typeCount).length} icon={GitBranch} color="blue" />
+        <KpiCard label="Grenar" value={fmt(gren.totalBranches)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} />
+        <KpiCard label="Grentyper" value={Object.keys(typeCount).length} icon={GitBranch} color="blue" info={KPI_INFO['Grentyper']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -272,7 +273,7 @@ export default function GrenSection() {
 
       {profiles.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Grenprofiler</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Grenprofiler<InfoButton text={TABLE_INFO['Grenprofiler']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'branch', label: 'Gren', render: v => `Gren ${v}` },

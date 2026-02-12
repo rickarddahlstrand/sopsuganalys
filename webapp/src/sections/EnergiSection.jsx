@@ -3,13 +3,14 @@ import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1 } from '../utils/formatters'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
@@ -21,17 +22,16 @@ export default function EnergiSection() {
 
   if (!ed) return <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
-  const driftData = [{
-    id: 'Drifttid',
-    data: ed.energy.map(e => ({ x: e.month, y: e.operationTimeH })),
-  }]
+  const driftPoints = ed.energy.map(e => ({ x: e.month, y: e.operationTimeH }))
+  const driftData = [{ id: 'Drifttid', data: driftPoints }]
+  const driftMin = driftPoints.length > 0 ? Math.min(...driftPoints.map(d => d.y)) : 0
 
   return (
     <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}>
       <KpiGrid>
-        <KpiCard label="Total energi" value={`${fmt(ed.totalEnergy)} kWh`} icon={Zap} color="yellow" />
-        <KpiCard label="Total drifttid" value={`${fmt(ed.totalTime)} h`} icon={Zap} color="orange" />
-        <KpiCard label="Totala tömningar" value={fmt(ed.totalEmptyings)} icon={Zap} color="cyan" />
+        <KpiCard label="Total energi" value={`${fmt(ed.totalEnergy)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} />
+        <KpiCard label="Total drifttid" value={`${fmt(ed.totalTime)} h`} icon={Zap} color="orange" info={KPI_INFO['Total drifttid']} />
+        <KpiCard label="Totala tömningar" value={fmt(ed.totalEmptyings)} icon={Zap} color="cyan" info={KPI_INFO['Totala tömningar']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -82,7 +82,9 @@ export default function EnergiSection() {
             pointBorderWidth={2}
             pointBorderColor={{ from: 'serieColor' }}
             enableArea
+            areaBaselineValue={driftMin}
             areaOpacity={0.1}
+            yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
             useMesh
             enableSlices="x"
           />
@@ -91,7 +93,7 @@ export default function EnergiSection() {
 
       {ed.machineAvg.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Maskinstatistik (årssnitt)</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Maskinstatistik (årssnitt)<InfoButton text={TABLE_INFO['Maskinstatistik']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'name', label: 'Maskin' },

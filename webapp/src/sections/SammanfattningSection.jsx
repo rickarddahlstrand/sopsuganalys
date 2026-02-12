@@ -3,13 +3,14 @@ import { FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import { ResponsiveBar } from '@nivo/bar'
 
 const DEFAULT_CHART_LIMIT = 4
@@ -35,6 +36,7 @@ export default function SammanfattningSection() {
             value={`${kpi.mean} ${kpi.unit}`}
             icon={FileText}
             color="blue"
+            info={KPI_INFO['Sammanfattning KPI']}
           />
         ))}
       </KpiGrid>
@@ -74,6 +76,7 @@ export default function SammanfattningSection() {
       )}
 
       <div className="mt-6">
+        <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">KPI-tabell<InfoButton text={TABLE_INFO['KPI-tabell']} size={14} /></h4>
         <DataTable
           columns={[
             { key: 'key', label: 'KPI' },

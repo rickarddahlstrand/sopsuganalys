@@ -8,7 +8,7 @@ export default function ChartCard({ title, height = 300, info, controls, childre
 
   return (
     <>
-      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg overflow-hidden">
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/50 dark:border-slate-700/50">
           <div className="flex items-center gap-1.5">
             <h4 className="text-sm font-medium text-slate-600 dark:text-slate-300">{title}</h4>
@@ -24,7 +24,7 @@ export default function ChartCard({ title, height = 300, info, controls, childre
             </button>
           </div>
         </div>
-        <div style={{ height }} className="p-2 overflow-hidden">
+        <div style={{ height }} className="p-2 relative">
           {children}
         </div>
       </div>

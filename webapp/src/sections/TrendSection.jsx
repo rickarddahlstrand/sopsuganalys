@@ -3,12 +3,13 @@ import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, fmt2 } from '../utils/formatters'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import StatusBadge from '../components/common/StatusBadge'
 import EmptyState from '../components/common/EmptyState'
+import InfoButton from '../components/common/InfoButton'
 import { ResponsiveLine } from '@nivo/line'
 import { ResponsiveScatterPlot } from '@nivo/scatterplot'
 
@@ -38,13 +39,9 @@ export default function TrendSection() {
   ]
 
   // Manual percentage line
-  const manualPctLine = [{
-    id: 'Manuell andel',
-    data: (man?.monthly || []).map(m => ({
-      x: m.month,
-      y: m.manualPct,
-    })),
-  }]
+  const manualPctPoints = (man?.monthly || []).map(m => ({ x: m.month, y: m.manualPct }))
+  const manualPctLine = [{ id: 'Manuell andel', data: manualPctPoints }]
+  const manualPctMin = manualPctPoints.length > 0 ? Math.min(...manualPctPoints.map(d => d.y)) : 0
 
   // Scatter: energy vs emptyings
   const scatterData = [{
@@ -114,7 +111,7 @@ export default function TrendSection() {
             <div className={`p-2.5 rounded-xl ${trendClass === 'minskande' ? 'bg-emerald-100 dark:bg-emerald-900/50' : trendClass === 'ökande' ? 'bg-red-100 dark:bg-red-900/50' : 'bg-blue-100 dark:bg-blue-900/50'}`}>
               {trendClass === 'minskande' ? <TrendingDown className="w-6 h-6 text-emerald-600 dark:text-emerald-400" /> : trendClass === 'ökande' ? <TrendingUp className="w-6 h-6 text-red-600 dark:text-red-400" /> : <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Energitrend</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">Energitrend<InfoButton text={KPI_INFO['Energitrend']} size={13} /></p>
           </div>
           <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 capitalize">{trendClass}</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">R² = {rSquared}</p>
@@ -126,7 +123,7 @@ export default function TrendSection() {
             <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/50">
               <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Korrelation</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">Korrelation<InfoButton text={KPI_INFO['Korrelation (KPI)']} size={13} /></p>
           </div>
           <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">r = {pearsonR}</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">p-värde: {pValue}</p>
@@ -138,7 +135,7 @@ export default function TrendSection() {
             <div className={`p-2.5 rounded-xl ${anomalyCount > 0 ? 'bg-red-100 dark:bg-red-900/50' : 'bg-emerald-100 dark:bg-emerald-900/50'}`}>
               <AlertTriangle className={`w-6 h-6 ${anomalyCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Anomalier</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">Anomalier<InfoButton text={KPI_INFO['Anomalier (KPI)']} size={13} /></p>
           </div>
           <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{anomalyCount} st</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{anomalyCount === 0 ? 'Inga avvikelser' : 'Avvikande värden'}</p>
@@ -150,7 +147,7 @@ export default function TrendSection() {
             <div className={`p-2.5 rounded-xl ${hasSeasonal ? 'bg-orange-100 dark:bg-orange-900/50' : 'bg-slate-100 dark:bg-slate-700/50'}`}>
               <Sun className={`w-6 h-6 ${hasSeasonal ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'}`} />
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Säsong</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">Säsong<InfoButton text={KPI_INFO['Säsong (KPI)']} size={13} /></p>
           </div>
           <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">{hasSeasonal ? 'Ja' : 'Nej'}</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{hasSeasonal ? 'Säsongsmönster finns' : 'Jämn förbrukning'}</p>
@@ -209,6 +206,7 @@ export default function TrendSection() {
               pointBorderWidth={2}
               pointBorderColor={{ from: 'serieColor' }}
               enableArea
+              areaBaselineValue={manualPctMin}
               areaOpacity={0.15}
               useMesh
               enableSlices="x"
@@ -237,6 +235,13 @@ export default function TrendSection() {
               axisBottom={{ legend: 'Tömningar', legendPosition: 'middle', legendOffset: 32, tickSize: 0, tickPadding: 5 }}
               nodeSize={10}
               layers={['grid', 'axes', scatterRegLine, 'nodes', 'markers', 'mesh', 'legends']}
+              tooltip={({ node }) => (
+                <div className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 text-sm">
+                  <strong>{node.data.label}</strong>
+                  <div className="text-slate-600 dark:text-slate-300">Tömningar: {fmt(node.data.x)}</div>
+                  <div className="text-slate-600 dark:text-slate-300">Energi: {fmt(node.data.y)} kWh</div>
+                </div>
+              )}
             />
           )}
         </ChartCard>
@@ -244,7 +249,7 @@ export default function TrendSection() {
 
       {corrRows.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Korrelationsanalys</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Korrelationsanalys<InfoButton text={TABLE_INFO['Korrelationsanalys']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'pair', label: 'Par' },
@@ -259,7 +264,7 @@ export default function TrendSection() {
 
       {anomalyRows.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Identifierade anomalier</h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Identifierade anomalier<InfoButton text={TABLE_INFO['Identifierade anomalier']} size={14} /></h4>
           <DataTable
             columns={[
               { key: 'target', label: 'Datakälla' },

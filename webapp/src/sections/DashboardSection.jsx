@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, pct } from '../utils/formatters'
-import { SECTION_INFO, CHART_INFO } from '../utils/descriptions'
+import { SECTION_INFO, CHART_INFO, KPI_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiCard from '../components/common/KpiCard'
 import KpiGrid from '../components/common/KpiGrid'
@@ -32,21 +32,20 @@ export default function DashboardSection() {
 
   // Mini chart data
   const energyData = energiDrift.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))
-  const availData = ventiler?.monthlyAvailSummary ? [{
-    id: 'Tillgänglighet',
-    data: ventiler.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean })),
-  }] : []
+  const availPoints = ventiler?.monthlyAvailSummary?.map(m => ({ x: m.month, y: m.mean })) || []
+  const availData = availPoints.length > 0 ? [{ id: 'Tillgänglighet', data: availPoints }] : []
+  const availMin = availPoints.length > 0 ? Math.min(...availPoints.map(d => d.y)) : 0
   const alarmData = larm?.monthlyTotals?.map(m => ({ month: m.month, Larm: m.total })) || []
 
   return (
     <SectionWrapper id="dashboard" title="Överblick" icon={LayoutDashboard} info={SECTION_INFO.dashboard}>
       <KpiGrid>
-        <KpiCard label="Total energi" value={`${fmt(totalKwh)} kWh`} icon={Zap} color="yellow" />
-        <KpiCard label="Totala tömningar" value={fmt(totalEmptyings)} icon={Trash2} color="cyan" />
-        <KpiCard label="Medeltillgänglighet" value={pct(avgAvail)} icon={Gauge} color="blue" />
-        <KpiCard label="Totala larm" value={fmt(totalAlarms)} icon={AlertTriangle} color="red" />
-        <KpiCard label="Ventiler" value={fmt(valveCount)} icon={Activity} color="emerald" />
-        <KpiCard label="Grenar" value={fmt(branchCount)} icon={GitBranch} color="orange" />
+        <KpiCard label="Total energi" value={`${fmt(totalKwh)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} />
+        <KpiCard label="Totala tömningar" value={fmt(totalEmptyings)} icon={Trash2} color="cyan" info={KPI_INFO['Totala tömningar']} />
+        <KpiCard label="Medeltillgänglighet" value={pct(avgAvail)} icon={Gauge} color="blue" info={KPI_INFO['Medeltillgänglighet']} />
+        <KpiCard label="Totala larm" value={fmt(totalAlarms)} icon={AlertTriangle} color="red" info={KPI_INFO['Totala larm']} />
+        <KpiCard label="Ventiler" value={fmt(valveCount)} icon={Activity} color="emerald" info={KPI_INFO['Ventiler']} />
+        <KpiCard label="Grenar" value={fmt(branchCount)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -81,6 +80,7 @@ export default function DashboardSection() {
               pointBorderWidth={2}
               pointBorderColor={{ from: 'serieColor' }}
               enableArea
+              areaBaselineValue={availMin}
               areaOpacity={0.1}
               yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
               useMesh

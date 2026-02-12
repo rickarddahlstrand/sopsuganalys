@@ -220,6 +220,191 @@ export const SECTION_INFO = {
     'Följ upp mot KPI-målen månadsvis för att se om åtgärderna ger önskad effekt.',
 }
 
+// ---- KPI-level descriptions ----
+
+export const KPI_INFO = {
+  'Total energi':
+    'Anläggningens totala elförbrukning under perioden i kilowattimmar (kWh). ' +
+    'Drivs huvudsakligen av vakuumpumpar i terminalen som skapar undertryck i sopsugsledningarna.',
+
+  'Totala tömningar':
+    'Antal tömningscykler under perioden. Varje cykel innebär att en sopventil öppnas ' +
+    'och avfall transporteras genom sopsugsledningen till terminalen.',
+
+  'Medeltillgänglighet':
+    'Genomsnittlig tillgänglighet för alla sopventiler. ' +
+    'Över 99% är bra, 98–99% kräver uppmärksamhet, under 98% indikerar allvarliga problem.',
+
+  'Totala larm':
+    'Totalt antal loggade larm under perioden — alla kategorier inkluderade (General, Critical, Total stop).',
+
+  'Ventiler':
+    'Antal unika sopventiler i anläggningen. Varje ventil separerar en lagringsenhets inkastpunkt från sopsugsledningen.',
+
+  'Grenar':
+    'Antal grenar (rörledningssegment) i kvartersnätet. Varje gren har flera inkastpunkter med sopventiler.',
+
+  'Total drifttid':
+    'Antal timmar vakuumsystemet i terminalen varit aktivt under perioden. ' +
+    'Korrelerar normalt med energiförbrukning och antal tömningar.',
+
+  'Totala fel':
+    'Summerat antal registrerade fel för alla sopventiler under perioden. ' +
+    'Inkluderar alla feltyper: DOES_NOT_OPEN, DOES_NOT_CLOSE, FULL_NOT_EMPTIED m.fl.',
+
+  'H1 medel/mån':
+    'Genomsnittligt antal larm per månad under första halvåret (jan–jun). ' +
+    'Jämför med H2 för att se om larmfrekvensen förbättrats under året.',
+
+  'H2 medel/mån':
+    'Genomsnittligt antal larm per månad under andra halvåret (jul–dec). ' +
+    'Lägre värde än H1 indikerar förbättring.',
+
+  'Larmtrend':
+    'Larmtrendens riktning baserat på linjär regression: minskande, stabil eller ökande. ' +
+    'Minskande trend innebär att antalet larm per månad sjunker systematiskt.',
+
+  'Grentyper':
+    'Antal distinkta grentyper (Skola, Kontor, Bostäder, Övrigt) som identifierats via Info-fältet i rapporterna.',
+
+  'Manuella kommandon':
+    'Totalt antal manuella öppningskommandon (MAN_OPEN_CMD) under perioden. ' +
+    'Manuella kommandon krävs när automatiken inte fungerar.',
+
+  'Totala kommandon':
+    'Totalt antal öppningskommandon (manuella + automatiska) under perioden.',
+
+  'Manuell andel':
+    'Procentandel manuella kommandon av alla kommandon under hela perioden. ' +
+    'Under 3% är normalt, 3–10% bör övervakas, över 10% kräver åtgärd.',
+
+  'kWh/tömning (medel)':
+    'Genomsnittlig energiförbrukning per tömningscykel under perioden. ' +
+    'Under 20 kWh är bra, 20–30 acceptabelt, över 30 kWh indikerar ineffektivitet.',
+
+  'Bästa energimånad':
+    'Månaden med lägst kWh per tömning — mest energieffektiv drift. ' +
+    'Bra referenspunkt för vad anläggningen kan prestera under optimala förhållanden.',
+
+  'Sämsta energimånad':
+    'Månaden med högst kWh per tömning — minst energieffektiv drift. ' +
+    'Bör utredas för att identifiera orsaken (störningar, läckor, ändrade förhållanden).',
+
+  'Energispridning':
+    'Procentuell skillnad mellan bästa och sämsta månadens kWh/tömning. ' +
+    'Hög spridning (>20%) indikerar ojämn drift med möjliga periodiska problem.',
+
+  'Manuell andel (år)':
+    'Manuell andel beräknad på hela årets data. ' +
+    'Under 3% indikerar välfungerande automatik.',
+
+  'Manuell H1':
+    'Manuell andel under första halvåret (jan–jun). Jämför med H2 för att se om automatiken förbättrats.',
+
+  'Manuell H2':
+    'Manuell andel under andra halvåret (jul–dec). Lägre värde än H1 tyder på förbättring.',
+
+  'Sämsta manuellmånad':
+    'Månaden med högst andel manuella kommandon. Kan bero på specifik incident eller att en gren haft automatikproblem.',
+
+  'Sammanfattning KPI':
+    'Nyckeltal från Sheet1 — anläggningens grundkonfiguration och systemöversikt. ' +
+    'Statiska värden (Min=Max) bekräftar oförändrad konfiguration under hela perioden.',
+
+  'Energitrend':
+    'Riktning för energiförbrukningen baserat på linjär regression. ' +
+    'R²-värdet anger trendlinjens förklaringsgrad — R²=1.0 betyder perfekt linjärt samband.',
+
+  'Korrelation (KPI)':
+    'Pearson-korrelationskoefficient (r) för det starkaste sambandet i data. ' +
+    'r nära ±1 = starkt samband, nära 0 = inget samband. p-värde <0.05 = statistiskt signifikant.',
+
+  'Anomalier (KPI)':
+    'Antal datapunkter med z-score >2, dvs. värden som avviker mer än 2 standardavvikelser från medelvärdet. ' +
+    'Bör utredas individuellt.',
+
+  'Säsong (KPI)':
+    'Indikerar om energiförbrukningen har ett tydligt säsongsmönster. ' +
+    'Säsongsmönster är normalt för anläggningar med skolgrenar eller stora temperaturvariationer.',
+}
+
+// ---- Table-level descriptions ----
+
+export const TABLE_INFO = {
+  'Maskinstatistik':
+    'Årsgenomsnitt per maskin (vakuumpump, kompressor etc). ' +
+    'Starter/mån visar antal start-stopp-cykler, Timmar/mån aktiv drifttid, kWh/mån energiförbrukning. ' +
+    'Högt antal starter med kort drifttid kan indikera ineffektiva cykler.',
+
+  'Sämsta ventilerna':
+    'Sopventiler rangordnade efter lägst genomsnittlig tillgänglighet. ' +
+    'Under 95% är kritiskt (röd), 95–99% varning (orange), över 99% OK (grön). ' +
+    'Ventiler med kroniskt låg tillgänglighet bör prioriteras för underhåll.',
+
+  'KPI-tabell':
+    'Alla nyckeltal från Sheet1 (anläggningsöversikten). ' +
+    'Typ anger om värdet är numeriskt eller text. Min/Max visar spridning — ' +
+    'identiska Min/Max-värden betyder att parametern är konstant under hela perioden.',
+
+  'Grenprofiler':
+    'Sammanfattning per gren: antal ventiler, tillgänglighet, felantal, manuell andel och säsongstyp. ' +
+    'Grenar med låg tillgänglighet OCH hög manuell andel bör prioriteras.',
+
+  'Manuella ventiler':
+    'Ventiler med manuella kommandon, sorterade efter manuell andel. ' +
+    'Hög manuell% + hög tillgänglighet = dold risk — operatörer kompenserar automatikproblem. ' +
+    'Dessa ventiler bör åtgärdas trots att statistiken ser bra ut.',
+
+  'Korrelationsanalys':
+    'Pearson-korrelation mellan olika variabler. r nära ±1 = starkt samband, nära 0 = inget samband. ' +
+    'p<0.05 = statistiskt signifikant. Tolkningsregel: |r|>0.7 stark, 0.4–0.7 måttlig, <0.4 svag.',
+
+  'Identifierade anomalier':
+    'Datapunkter med z-score >2, dvs. värden som avviker mer än 2 standardavvikelser från medelvärdet. ' +
+    'Typ anger om värdet är onormalt högt eller lågt. Bör utredas individuellt.',
+
+  'Riskventiler':
+    'Ventiler med hög manuell andel (>20%) men samtidigt hög tillgänglighet (>98%). ' +
+    'Dessa "dolda risker" fungerar bara tack vare att operatörer aktivt kompenserar. ' +
+    'Om operatören är frånvarande riskerar dessa ventiler driftstopp.',
+
+  'Korrelation manuella vs feltyper':
+    'Pearson-korrelation mellan manuella kommandon och varje feltyp. ' +
+    'Visar vilka feltyper som driver behovet av manuella ingrepp. ' +
+    'Hög korrelation med DOES_NOT_OPEN innebär att ventiler som inte öppnar automatiskt kompenseras manuellt.',
+
+  'Feltypsfördelning':
+    'Total fördelning av alla feltyper under perioden. ' +
+    'DOES_NOT_OPEN och DOES_NOT_CLOSE är mest kritiska (mekaniska fel). ' +
+    'LONG_TIME_SINCE_LAST_COLLECTION är normalt (inget avfall kastat).',
+
+  'Strategiska mål':
+    'KPI-mål för 3, 6 och 12 månader baserat på analysresultaten. ' +
+    'Nuläge visar aktuellt värde, strategi anger föreslagen metod. ' +
+    'Följ upp mot dessa mål månadsvis.',
+
+  'Larmanomalier':
+    'Specifika månader med onormalt höga larmantal (z-score >2). ' +
+    'Januarispikar är vanliga efter julledighet — ansamlat avfall genererar många tömningar och larm.',
+
+  'Findings':
+    'Automatiskt identifierade insikter baserat på korsreferering av data från flera källor: ' +
+    'felkoder, manuella ingrepp, energiförbrukning och larm. Prioriterade efter allvarlighetsgrad.',
+
+  'Manuella körningar':
+    'KPI:er för manuella körningar under perioden. H1/H2 visar halvårsuppdelning. ' +
+    'Minskande trend från H1 till H2 indikerar förbättring.',
+
+  'Larmmönster':
+    'Aggregerad larmstatistik under perioden. ' +
+    'Januari-faktorn visar hur mycket januari avviker från övriga månader (normalt 1.5–2.5x). ' +
+    'Anomalier pekar ut månader med extremt larmantal.',
+
+  'Operatörsagenda':
+    'Anläggningens nyckeltal som stöd för operatörsagendans prioriteringar. ' +
+    'Akuta åtgärder kräver omedelbar insats, planerade förbättringar kan schemaläggas inom 1–3 månader.',
+}
+
 // ---- Chart-level descriptions ----
 
 export const CHART_INFO = {
