@@ -677,15 +677,16 @@ export const CHART_INFO = {
 
   // Trend
   // Larm (extra)
-  'Larm per kategori (årstotal)':
-    'Visar totalt antal larm per kategori summerat över hela den analyserade perioden.' +
+  'Larm per kategori (per månad)':
+    'Visar antal larm per kategori uppdelat per månad som staplat stapeldiagram.' +
     '\n\n' +
-    'Staplarna visar hur larmvolymen fördelar sig mellan kategorierna General, Critical och Total stop. ' +
+    'Varje stapel representerar en månad och är uppdelad i färgkodade sektioner för kategorierna General, Critical och Total stop. ' +
     'General-larm (t.ex. "container full", "lång tid sedan tömning") är normala drifthändelser som inte kräver akut åtgärd. ' +
     'Critical-larm (t.ex. "sopventil svarar inte", "full ej tömd") kräver operatörsåtgärd. ' +
     'Total stop innebär att en gren eller hela anläggningen stått still. ' +
     '\n\n' +
-    'Om Critical eller Total stop utgör en stor andel av totalen bör man undersöka vilka grenar och ventiler som genererar dessa larm. ' +
+    'Diagrammet visar hur larmfördelningen varierar över tid. ' +
+    'Om Critical eller Total stop ökar över tid bör man undersöka vilka grenar och ventiler som genererar dessa larm. ' +
     'En hög andel General-larm är normalt — de är informativa och visar att styrsystemet övervakar korrekt.',
 
   // Gren (extra)

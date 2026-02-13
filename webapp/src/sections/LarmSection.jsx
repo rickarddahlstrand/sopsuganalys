@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Bell, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
@@ -12,19 +11,11 @@ import ChartCard from '../components/common/ChartCard'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import StatusBadge from '../components/common/StatusBadge'
-import SortToggle from '../components/common/SortToggle'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
 const alarmTrendLine = createTrendLineLayer('Larm', '#b91c1c')
-
-function applySortBar(data, valueKey, sortMode) {
-  if (sortMode === 'default') return data
-  const sorted = [...data]
-  sorted.sort((a, b) => sortMode === 'asc' ? a[valueKey] - b[valueKey] : b[valueKey] - a[valueKey])
-  return sorted
-}
 
 export default function LarmSection() {
   const { state } = useData()
@@ -33,7 +24,6 @@ export default function LarmSection() {
   const l = state.larm
   const trend = state.trendanalys
 
-  const [catSort, setCatSort] = useState('default')
 
   if (!l) return <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -75,19 +65,19 @@ export default function LarmSection() {
     'Föregående år': l.prevMonthly[m.sortKey] != null ? Math.round(l.prevMonthly[m.sortKey]) : 0,
   }))
 
-  // Category totals bar
-  const catDataRaw = Object.entries(l.categoryTotals)
-    .sort((a, b) => b[1] - a[1])
-    .map(([cat, total]) => ({ category: cat, Antal: total }))
-  const catData = applySortBar(catDataRaw, 'Antal', catSort)
+  // Category per month stacked bar
+  const monthlyCatData = l.monthlyTotals.map(m => ({
+    month: m.month,
+    ...m.categories,
+  }))
 
   return (
     <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}>
       <KpiGrid>
-        <KpiCard label="Totala larm" value={fmt(l.totalAlarms)} icon={AlertTriangle} color="red" info={KPI_INFO['Totala larm']} />
-        <KpiCard label="H1 medel/mån" value={fmt(l.h1Avg)} icon={AlertTriangle} color="orange" info={KPI_INFO['H1 medel/mån']} />
-        <KpiCard label="H2 medel/mån" value={fmt(l.h2Avg)} icon={AlertTriangle} color="yellow" info={KPI_INFO['H2 medel/mån']} />
-        <KpiCard label="Trend" value={<StatusBadge status={l.trend === 'ökande' ? 'critical' : l.trend === 'minskande' ? 'ok' : 'info'} label={l.trend} />} icon={AlertTriangle} color="blue" info={KPI_INFO['Larmtrend']} />
+        <KpiCard label="Totala larm" value={fmt(l.totalAlarms)} icon={Bell} color="red" info={KPI_INFO['Totala larm']} />
+        <KpiCard label="H1 medel/mån" value={fmt(l.h1Avg)} icon={Calendar} color="orange" info={KPI_INFO['H1 medel/mån']} />
+        <KpiCard label="H2 medel/mån" value={fmt(l.h2Avg)} icon={Calendar} color="yellow" info={KPI_INFO['H2 medel/mån']} />
+        <KpiCard label="Trend" value={<StatusBadge status={l.trend === 'ökande' ? 'critical' : l.trend === 'minskande' ? 'ok' : 'info'} label={l.trend} />} icon={l.trend === 'ökande' ? TrendingUp : l.trend === 'minskande' ? TrendingDown : Minus} color="blue" info={KPI_INFO['Larmtrend']} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
@@ -144,27 +134,26 @@ export default function LarmSection() {
           />
         </ChartCard>
 
-        {catData.length > 0 && (
+        {l.categories.length > 0 && (
           <ChartCard
-            title="Larm per kategori (årstotal)"
-            height={Math.max(250, catData.length * 30)}
-            info={CHART_INFO['Larm per kategori (årstotal)']}
-            controls={<SortToggle sortMode={catSort} onChange={setCatSort} />}
+            title="Larm per kategori (per månad)"
+            height={300}
+            info={CHART_INFO['Larm per kategori (per månad)']}
           >
             <ResponsiveBar
-              data={catData}
-              keys={['Antal']}
-              indexBy="category"
-              layout="horizontal"
+              data={monthlyCatData}
+              keys={l.categories}
+              indexBy="month"
+              groupMode="stacked"
               theme={theme}
-              colors={['#ef4444']}
-              borderRadius={3}
+              borderRadius={2}
               padding={0.3}
-              margin={{ top: 10, right: 30, bottom: 30, left: 200 }}
+              margin={{ top: 10, right: 120, bottom: 35, left: 55 }}
               axisLeft={{ tickSize: 0, tickPadding: 5 }}
-              axisBottom={{ tickSize: 0, tickPadding: 5 }}
-              enableLabel={true}
-              labelTextColor="#fff"
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              enableLabel={false}
+              colors={{ scheme: 'set2' }}
+              legends={[{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 120, itemWidth: 110, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
             />
           </ChartCard>
         )}
