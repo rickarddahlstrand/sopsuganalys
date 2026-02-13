@@ -16,6 +16,8 @@
     "@nivo/pie": "^0.88.0",
     "@nivo/scatterplot": "^0.88.0",
     "framer-motion": "^11.15.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.1.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",

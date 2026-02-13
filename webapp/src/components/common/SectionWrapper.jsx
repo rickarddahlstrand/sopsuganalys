@@ -5,6 +5,7 @@ export default function SectionWrapper({ id, title, icon: Icon, info, children }
   return (
     <motion.section
       id={id}
+      data-section={id}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}

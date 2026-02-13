@@ -1,12 +1,31 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Menu, X } from 'lucide-react'
+import { Sun, Moon, Menu, X, FileDown, Loader2 } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
+import { useData } from '../../context/DataContext'
+import { exportToPdf } from '../../utils/pdfExport'
 import Header from './Header'
 
 export default function StickyNav({ sections }) {
   const { dark, toggle } = useTheme()
+  const { state } = useData()
   const [activeId, setActiveId] = useState(sections[0]?.id)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
+
+  const handleExport = async () => {
+    if (exporting) return
+    setExporting(true)
+    setExportProgress(0)
+    try {
+      await exportToPdf(state.facilityName, setExportProgress)
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      alert('Kunde inte exportera PDF: ' + err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -62,6 +81,23 @@ export default function StickyNav({ sections }) {
           {/* Mobile spacer */}
           <div className="flex-1 sm:hidden" />
 
+          {/* PDF Export button */}
+          {state.parsedFiles?.length > 0 && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400 disabled:opacity-50"
+              aria-label="Exportera till PDF"
+              title={exporting ? `Exporterar... ${exportProgress}%` : 'Exportera till PDF'}
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileDown className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           {/* Theme toggle */}
           <button
             onClick={toggle}
@@ -98,6 +134,23 @@ export default function StickyNav({ sections }) {
                   {s.label}
                 </button>
               ))}
+              {state.parsedFiles?.length > 0 && (
+                <>
+                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-2" />
+                  <button
+                    onClick={() => { setMenuOpen(false); handleExport() }}
+                    disabled={exporting}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70 disabled:opacity-50"
+                  >
+                    {exporting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileDown className="w-4 h-4" />
+                    )}
+                    {exporting ? `Exporterar... ${exportProgress}%` : 'Exportera PDF'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
