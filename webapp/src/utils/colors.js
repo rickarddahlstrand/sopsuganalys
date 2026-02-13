@@ -34,7 +34,7 @@ export const ERROR_NAMES_SV = {
 // Swedish translations for Sheet1 KPI labels
 export const KPI_NAMES_SV = {
   // Fullständiga etiketter från rapporter (prioriteras)
-  'Inlets (no of DV\'s)': 'Antal inkastar',
+  'Inlets (no of DV\'s)': 'Antal inkast',
   'Branches (no of AV\'s)': 'Antal grenar',
   'Sections (no of SE\'s)': 'Antal sektioner',
   'In Operation Since': 'I drift sedan',
@@ -47,16 +47,16 @@ export const KPI_NAMES_SV = {
   'Number of apartments': 'Antal lägenheter',
 
   // Varianter med/utan apostrof
-  "Inlets (no of DV's)": 'Antal inkastar',
+  "Inlets (no of DV's)": 'Antal inkast',
   "Branches (no of AV's)": 'Antal grenar',
   "Sections (no of SE's)": 'Antal sektioner',
-  'Inlets (no of DVs)': 'Antal inkastar',
+  'Inlets (no of DVs)': 'Antal inkast',
   'Branches (no of AVs)': 'Antal grenar',
   'Sections (no of SEs)': 'Antal sektioner',
 
   // Antal/Number
-  'No of inlets': 'Antal inkastar',
-  'Number of inlets': 'Antal inkastar',
+  'No of inlets': 'Antal inkast',
+  'Number of inlets': 'Antal inkast',
   'No of valves': 'Antal ventiler',
   'Number of valves': 'Antal ventiler',
   'No of branches': 'Antal grenar',
@@ -165,7 +165,7 @@ export const KPI_NAMES_SV = {
   'Valve': 'Ventil',
   'Valves': 'Ventiler',
   'Inlet': 'Inkast',
-  'Inlets': 'Inkastar',
+  'Inlets': 'Inkast',
 
   // Status
   'Status': 'Status',
