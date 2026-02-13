@@ -1,7 +1,10 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import InfoButton from './InfoButton'
+import { useData } from '../../context/DataContext'
 
 export default function KpiCard({ label, value, delta, icon: Icon, color = 'emerald', info }) {
+  const { state } = useData()
+  const printMode = state.printMode
   const colorMap = {
     emerald: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400',
     yellow: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400',
@@ -17,10 +20,10 @@ export default function KpiCard({ label, value, delta, icon: Icon, color = 'emer
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <span className="flex items-center gap-1">
-            <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{label}</p>
+            <p className={`text-sm text-slate-500 dark:text-slate-400 ${printMode ? '' : 'truncate'}`}>{label}</p>
             {info && <InfoButton text={info} size={13} />}
           </span>
-          <p className="text-2xl font-bold mt-1 truncate">{value}</p>
+          <p className={`text-2xl font-bold mt-1 ${printMode ? '' : 'truncate'}`}>{value}</p>
           {delta != null && (
             <div className={`flex items-center gap-1 mt-1 text-sm ${
               delta > 0 ? 'text-red-500' : delta < 0 ? 'text-emerald-500' : 'text-slate-400'

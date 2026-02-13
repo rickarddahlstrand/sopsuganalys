@@ -1,10 +1,13 @@
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { useData } from '../../context/DataContext'
 
 /**
  * Tiny sort toggle for chart headers.
  * sortMode cycles: 'default' → 'asc' → 'desc' → 'default'
  */
 export default function SortToggle({ sortMode, onChange }) {
+  const { state } = useData()
+  if (state.printMode) return null
   const next = sortMode === 'default' ? 'asc' : sortMode === 'asc' ? 'desc' : 'default'
   const label = sortMode === 'asc' ? 'Stigande' : sortMode === 'desc' ? 'Fallande' : 'Original'
   const Icon = sortMode === 'asc' ? ArrowUp : sortMode === 'desc' ? ArrowDown : ArrowUpDown

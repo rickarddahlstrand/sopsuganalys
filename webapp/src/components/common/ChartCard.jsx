@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Maximize2 } from 'lucide-react'
 import Modal from './Modal'
 import InfoButton from './InfoButton'
+import { useData } from '../../context/DataContext'
 
 export default function ChartCard({ title, height = 300, info, controls, children }) {
   const [expanded, setExpanded] = useState(false)
+  const { state } = useData()
+  const printMode = state.printMode
 
   return (
     <>
@@ -14,15 +17,17 @@ export default function ChartCard({ title, height = 300, info, controls, childre
             <h4 className="text-sm font-medium text-slate-600 dark:text-slate-300">{title}</h4>
             {info && <InfoButton text={info} size={14} />}
           </div>
-          <div className="flex items-center gap-2">
-            {controls}
-            <button
-              onClick={() => setExpanded(true)}
-              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/70 text-slate-400 transition-colors"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
-          </div>
+          {!printMode && (
+            <div className="flex items-center gap-2">
+              {controls}
+              <button
+                onClick={() => setExpanded(true)}
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/70 text-slate-400 transition-colors"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
         <div style={{ height }} className="p-2 relative">
           {children}

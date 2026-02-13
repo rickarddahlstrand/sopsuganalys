@@ -35,6 +35,7 @@ export default function ManuellSection() {
 
   const [top15Sort, setTop15Sort] = useState('default')
   const [branchSort, setBranchSort] = useState('default')
+  const printMode = state.printMode
   const [showAllValves, setShowAllValves] = useState(false)
   const [showAllBranches, setShowAllBranches] = useState(false)
   const [showAllTable, setShowAllTable] = useState(false)
@@ -133,7 +134,7 @@ export default function ManuellSection() {
             info={CHART_INFO['Topp-15 ventiler (manuell%)']}
             controls={<>
               <SortToggle sortMode={top15Sort} onChange={setTop15Sort} />
-              {allManualValves.length > 15 && (
+              {!printMode && allManualValves.length > 15 && (
                 <button onClick={() => setShowAllValves(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
                   {showAllValves ? <><ChevronUp className="w-3 h-3" />Visa 15</> : <><ChevronDown className="w-3 h-3" />Alla ({allManualValves.length})</>}
                 </button>
@@ -166,7 +167,7 @@ export default function ManuellSection() {
             info={CHART_INFO['Manuell andel per gren']}
             controls={<>
               <SortToggle sortMode={branchSort} onChange={setBranchSort} />
-              {allBranches.length > 15 && (
+              {!printMode && allBranches.length > 15 && (
                 <button onClick={() => setShowAllBranches(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
                   {showAllBranches ? <><ChevronUp className="w-3 h-3" />Visa 15</> : <><ChevronDown className="w-3 h-3" />Alla ({allBranches.length})</>}
                 </button>
@@ -197,7 +198,7 @@ export default function ManuellSection() {
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Manuella ventiler<InfoButton text={TABLE_INFO['Manuella ventiler']} size={14} /></h4>
-            {allManualValves.length > 15 && (
+            {!printMode && allManualValves.length > 15 && (
               <button
                 onClick={() => setShowAllTable(s => !s)}
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"

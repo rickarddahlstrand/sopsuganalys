@@ -115,6 +115,14 @@ xlrd, pandas, matplotlib, scipy, fpdf2
 
 Fristående React-app (Vite + Tailwind) som analyserar .xls-filer helt i webbläsaren. Ingen data lämnar användarens dator.
 
+### Funktioner
+
+- Interaktiva diagram och tabeller med sortering och filtrering
+- KPI-kort med nyckeltal från anläggningssammanfattningen
+- Energi, ventiler, larm, grenar, fraktioner och manuella körningar
+- Rekommendationer med prioritering
+- **PDF-export** — Exportera hela analysen till en formaterad PDF-rapport med sidhuvud, sidfot, förklaringar och verktygsinfo. All rendering sker i webbläsaren via html2canvas + jsPDF.
+
 ### Lokal utveckling
 
 ```bash

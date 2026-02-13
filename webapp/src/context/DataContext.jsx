@@ -18,6 +18,7 @@ const initialState = {
   isLoading: false,
   progress: 0,
   progressLabel: '',
+  printMode: false,
 }
 
 function reducer(state, action) {
@@ -34,6 +35,8 @@ function reducer(state, action) {
       return { ...state, progress: action.payload.progress, progressLabel: action.payload.label || '' }
     case 'SET_ANALYSIS':
       return { ...state, [action.key]: action.payload }
+    case 'SET_PRINT_MODE':
+      return { ...state, printMode: action.payload }
     case 'RESET':
       return initialState
     default:

@@ -26,6 +26,7 @@ export default function VentilerSection() {
   const theme = getNivoTheme(dark)
   const v = state.ventiler
 
+  const printMode = state.printMode
   const [showAllChart, setShowAllChart] = useState(false)
   const [showAllTable, setShowAllTable] = useState(false)
   const [hiddenSeries, setHiddenSeries] = useState(new Set())
@@ -165,7 +166,7 @@ export default function VentilerSection() {
           title={chartTitle}
           height={300}
           info={CHART_INFO['10 sämsta ventilerna (tillgänglighet)']}
-          controls={allWorst.length > DEFAULT_CHART_LIMIT && (
+          controls={!printMode && allWorst.length > DEFAULT_CHART_LIMIT && (
             <button
               onClick={() => setShowAllChart(s => !s)}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors"
@@ -239,7 +240,7 @@ export default function VentilerSection() {
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Sämsta ventilerna<InfoButton text={TABLE_INFO['Sämsta ventilerna']} size={14} /></h4>
-            {allWorst.length > DEFAULT_TABLE_LIMIT && (
+            {!printMode && allWorst.length > DEFAULT_TABLE_LIMIT && (
               <button
                 onClick={() => setShowAllTable(s => !s)}
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"

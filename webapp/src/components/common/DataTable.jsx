@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { useData } from '../../context/DataContext'
 
 export default function DataTable({ columns, data, maxRows = 20 }) {
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [showAll, setShowAll] = useState(false)
+  const { state } = useData()
+  const printMode = state.printMode
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -28,7 +31,7 @@ export default function DataTable({ columns, data, maxRows = 20 }) {
 
   const limit = showAll ? sorted.length : maxRows
   const displayed = sorted.slice(0, limit)
-  const hasMore = data.length > maxRows
+  const hasMore = !printMode && data.length > maxRows
 
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">

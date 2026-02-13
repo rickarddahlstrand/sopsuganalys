@@ -1,28 +1,63 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, FileDown, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { exportToPdf } from '../../utils/pdfExport'
+import { useData } from '../../context/DataContext'
+import { resetFootnotes } from '../../utils/footnoteStore'
 
 export default function ExportModal({ isOpen, onClose, facilityName }) {
+  const { dispatch } = useData()
   const [status, setStatus] = useState('idle') // idle, exporting, done, error
-  const [progress, setProgress] = useState(0)
   const [currentSection, setCurrentSection] = useState('')
   const [error, setError] = useState(null)
   const abortRef = useRef(false)
 
+  // Smooth progress: real target + animated display value
+  const targetRef = useRef(0)
+  const [smoothProgress, setSmoothProgress] = useState(0)
+
+  useEffect(() => {
+    if (status !== 'exporting') {
+      setSmoothProgress(0)
+      targetRef.current = 0
+      return
+    }
+    const interval = setInterval(() => {
+      setSmoothProgress(prev => {
+        const target = targetRef.current
+        if (prev >= 100) return 100
+        // Always creep forward, faster toward target
+        const diff = target - prev
+        const step = diff > 1 ? Math.max(0.3, diff * 0.08) : 0.08
+        return Math.min(prev + step, 99.5)
+      })
+    }, 30)
+    return () => clearInterval(interval)
+  }, [status])
+
+  const onProgress = useCallback((prog, section) => {
+    if (abortRef.current) throw new Error('Avbruten av användaren')
+    targetRef.current = prog
+    if (prog >= 100) setSmoothProgress(100)
+    if (section) setCurrentSection(section)
+  }, [])
+
   const handleExport = async () => {
     setStatus('exporting')
-    setProgress(0)
+    setSmoothProgress(0)
+    targetRef.current = 0
     setError(null)
     abortRef.current = false
 
+    // Reset footnotes and enable printMode
+    resetFootnotes()
+    dispatch({ type: 'SET_PRINT_MODE', payload: true })
+
+    // Wait for React re-render + Nivo charts to redraw
+    await new Promise(r => setTimeout(r, 500))
+
     try {
-      await exportToPdf(facilityName, (prog, section) => {
-        if (abortRef.current) {
-          throw new Error('Avbruten av användaren')
-        }
-        setProgress(prog)
-        if (section) setCurrentSection(section)
-      })
+      await exportToPdf(facilityName, onProgress)
+      setSmoothProgress(100)
       setStatus('done')
     } catch (err) {
       if (err.message === 'Avbruten av användaren') {
@@ -32,6 +67,8 @@ export default function ExportModal({ isOpen, onClose, facilityName }) {
         setError(err.message)
         setStatus('error')
       }
+    } finally {
+      dispatch({ type: 'SET_PRINT_MODE', payload: false })
     }
   }
 
@@ -40,10 +77,9 @@ export default function ExportModal({ isOpen, onClose, facilityName }) {
       abortRef.current = true
     } else {
       onClose()
-      // Reset state after close animation
       setTimeout(() => {
         setStatus('idle')
-        setProgress(0)
+        setSmoothProgress(0)
         setCurrentSection('')
         setError(null)
       }, 200)
@@ -55,7 +91,7 @@ export default function ExportModal({ isOpen, onClose, facilityName }) {
       onClose()
       setTimeout(() => {
         setStatus('idle')
-        setProgress(0)
+        setSmoothProgress(0)
         setCurrentSection('')
         setError(null)
       }, 200)
@@ -63,6 +99,8 @@ export default function ExportModal({ isOpen, onClose, facilityName }) {
   }
 
   if (!isOpen) return null
+
+  const displayPct = Math.round(smoothProgress)
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -117,15 +155,15 @@ export default function ExportModal({ isOpen, onClose, facilityName }) {
                   {currentSection}
                 </p>
               )}
-              {/* Progress bar */}
+              {/* Progress bar — smooth transition */}
               <div className="relative h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
-                  className="absolute inset-y-0 left-0 bg-emerald-500 dark:bg-emerald-400 transition-all duration-300 ease-out rounded-full"
-                  style={{ width: `${progress}%` }}
+                  className="absolute inset-y-0 left-0 bg-emerald-500 dark:bg-emerald-400 rounded-full"
+                  style={{ width: `${smoothProgress}%`, transition: 'width 40ms linear' }}
                 />
               </div>
               <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-2">
-                {progress}%
+                {displayPct}%
               </p>
             </div>
           )}

@@ -36,6 +36,7 @@ export default function GrenSection() {
 
   const [healthSort, setHealthSort] = useState('default')
   const [manualSort, setManualSort] = useState('default')
+  const printMode = state.printMode
   const [showAllHealth, setShowAllHealth] = useState(false)
   const [showAllError, setShowAllError] = useState(false)
   const [showAllManual, setShowAllManual] = useState(false)
@@ -148,7 +149,7 @@ export default function GrenSection() {
           info={CHART_INFO['Hälsopoäng per gren']}
           controls={<>
             <SortToggle sortMode={healthSort} onChange={setHealthSort} />
-            {allHealthData.length > 20 && (
+            {!printMode && allHealthData.length > 20 && (
               <button onClick={() => setShowAllHealth(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
                 {showAllHealth ? <><ChevronUp className="w-3 h-3" />Visa 20</> : <><ChevronDown className="w-3 h-3" />Alla ({allHealthData.length})</>}
               </button>
@@ -196,7 +197,7 @@ export default function GrenSection() {
           title={`Feltrend sämsta grenar (${topErrorBranches.length} st)`}
           height={300}
           info={CHART_INFO['Feltrend topp-5 sämsta grenar']}
-          controls={branchAnalysis.length > 5 && (
+          controls={!printMode && branchAnalysis.length > 5 && (
             <button onClick={() => setShowAllError(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
               {showAllError ? <><ChevronUp className="w-3 h-3" />Visa 5</> : <><ChevronDown className="w-3 h-3" />Alla ({branchAnalysis.length})</>}
             </button>
@@ -225,7 +226,7 @@ export default function GrenSection() {
             info={CHART_INFO['Manuell andel per gren']}
             controls={<>
               <SortToggle sortMode={manualSort} onChange={setManualSort} />
-              {allManualBranches.length > 15 && (
+              {!printMode && allManualBranches.length > 15 && (
                 <button onClick={() => setShowAllManual(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
                   {showAllManual ? <><ChevronUp className="w-3 h-3" />Visa 15</> : <><ChevronDown className="w-3 h-3" />Alla ({allManualBranches.length})</>}
                 </button>

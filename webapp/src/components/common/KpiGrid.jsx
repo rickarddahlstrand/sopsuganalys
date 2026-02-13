@@ -1,5 +1,6 @@
 import { Children } from 'react'
 import { motion } from 'framer-motion'
+import { useData } from '../../context/DataContext'
 
 const container = {
   hidden: {},
@@ -23,8 +24,20 @@ function getGridClass(count) {
 }
 
 export default function KpiGrid({ children }) {
+  const { state } = useData()
+  const printMode = state.printMode
   const count = Children.count(children)
   const gridClass = getGridClass(count)
+
+  if (printMode) {
+    return (
+      <div className={`grid gap-4 ${gridClass}`}>
+        {Array.isArray(children) ? children.map((child, i) => (
+          <div key={i}>{child}</div>
+        )) : <div>{children}</div>}
+      </div>
+    )
+  }
 
   return (
     <motion.div

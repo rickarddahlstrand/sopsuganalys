@@ -1,9 +1,30 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useData } from '../../context/DataContext'
+import { registerFootnote } from '../../utils/footnoteStore'
 
 export default function InfoButton({ text, size = 16 }) {
+  const { state } = useData()
+
+  // Register footnote in printMode — useMemo ensures stable number across re-renders
+  const footnoteNum = useMemo(() => {
+    if (state.printMode && text) return registerFootnote(text)
+    return null
+  }, [state.printMode, text])
+
+  if (state.printMode) {
+    if (!footnoteNum) return null
+    return (
+      <sup className="text-[9px] font-bold text-blue-600 ml-0.5 align-super leading-none">{footnoteNum}</sup>
+    )
+  }
+
+  return <InfoButtonInteractive text={text} size={size} />
+}
+
+function InfoButtonInteractive({ text, size }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const tipRef = useRef(null)
@@ -13,7 +34,7 @@ export default function InfoButton({ text, size = 16 }) {
   const updatePosition = useCallback(() => {
     if (!ref.current) return
     const rect = ref.current.getBoundingClientRect()
-    const tipWidth = 448 // max-w-md ≈ 28rem = 448px
+    const tipWidth = 448 // max-w-md ~ 28rem = 448px
     let left = rect.left + rect.width / 2 - tipWidth / 2
     // Keep within viewport
     if (left < 16) left = 16

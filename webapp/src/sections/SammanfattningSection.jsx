@@ -24,6 +24,7 @@ export default function SammanfattningSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const samm = state.sammanfattning
+  const printMode = state.printMode
   const [showAllCharts, setShowAllCharts] = useState(false)
 
   if (!samm) return <SectionWrapper id="sammanfattning" title="Sammanfattning" icon={FileText} info={SECTION_INFO.sammanfattning}><EmptyState loading={state.isLoading} /></SectionWrapper>
@@ -71,7 +72,7 @@ export default function SammanfattningSection() {
               </ChartCard>
             ))}
           </div>
-          {changingKpis.length > DEFAULT_CHART_LIMIT && (
+          {!printMode && changingKpis.length > DEFAULT_CHART_LIMIT && (
             <div className="flex justify-center mt-3">
               <button
                 onClick={() => setShowAllCharts(s => !s)}
