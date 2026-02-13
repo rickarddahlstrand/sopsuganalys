@@ -1,31 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Menu, X, FileDown, Loader2 } from 'lucide-react'
+import { Sun, Moon, Menu, X, FileDown } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import { useData } from '../../context/DataContext'
-import { exportToPdf } from '../../utils/pdfExport'
 import Header from './Header'
+import ExportModal from '../common/ExportModal'
 
 export default function StickyNav({ sections }) {
   const { dark, toggle } = useTheme()
   const { state } = useData()
   const [activeId, setActiveId] = useState(sections[0]?.id)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const [exportProgress, setExportProgress] = useState(0)
-
-  const handleExport = async () => {
-    if (exporting) return
-    setExporting(true)
-    setExportProgress(0)
-    try {
-      await exportToPdf(state.facilityName, setExportProgress)
-    } catch (err) {
-      console.error('PDF export failed:', err)
-      alert('Kunde inte exportera PDF: ' + err.message)
-    } finally {
-      setExporting(false)
-    }
-  }
+  const [exportModalOpen, setExportModalOpen] = useState(false)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -54,107 +39,110 @@ export default function StickyNav({ sections }) {
     setMenuOpen(false)
   }
 
+  const openExportModal = () => {
+    setMenuOpen(false)
+    setExportModalOpen(true)
+  }
+
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/50 dark:border-slate-800/50">
-      <div className="px-3 sm:px-4">
-        <div className="flex items-center gap-3 py-2">
-          <Header />
-          <div className="h-5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 hidden sm:block" />
+    <>
+      <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/50 dark:border-slate-800/50">
+        <div className="px-3 sm:px-4">
+          <div className="flex items-center gap-3 py-2">
+            <Header />
+            <div className="h-5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 hidden sm:block" />
 
-          {/* Desktop navigation */}
-          <div className="hidden sm:flex gap-0.5 flex-wrap flex-1">
-            {sections.map(s => (
-              <button
-                key={s.id}
-                onClick={() => scrollTo(s.id)}
-                className={`px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-                  activeId === s.id
-                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Mobile spacer */}
-          <div className="flex-1 sm:hidden" />
-
-          {/* PDF Export button */}
-          {state.parsedFiles?.length > 0 && (
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400 disabled:opacity-50"
-              aria-label="Exportera till PDF"
-              title={exporting ? `Exporterar... ${exportProgress}%` : 'Exportera till PDF'}
-            >
-              {exporting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <FileDown className="w-4 h-4" />
-              )}
-            </button>
-          )}
-
-          {/* Theme toggle */}
-          <button
-            onClick={toggle}
-            className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
-            aria-label={dark ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
-          >
-            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="sm:hidden shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
-            aria-label="Öppna meny"
-          >
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {/* Mobile dropdown menu */}
-        {menuOpen && (
-          <div className="sm:hidden pb-3 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-            <div className="flex flex-col gap-1">
+            {/* Desktop navigation */}
+            <div className="hidden sm:flex gap-0.5 flex-wrap flex-1">
               {sections.map(s => (
                 <button
                   key={s.id}
                   onClick={() => scrollTo(s.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium text-left transition-colors ${
+                  className={`px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                     activeId === s.id
                       ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'
                   }`}
                 >
                   {s.label}
                 </button>
               ))}
-              {state.parsedFiles?.length > 0 && (
-                <>
-                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-2" />
-                  <button
-                    onClick={() => { setMenuOpen(false); handleExport() }}
-                    disabled={exporting}
-                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70 disabled:opacity-50"
-                  >
-                    {exporting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <FileDown className="w-4 h-4" />
-                    )}
-                    {exporting ? `Exporterar... ${exportProgress}%` : 'Exportera PDF'}
-                  </button>
-                </>
-              )}
             </div>
+
+            {/* Mobile spacer */}
+            <div className="flex-1 sm:hidden" />
+
+            {/* PDF Export button */}
+            {state.parsedFiles?.length > 0 && (
+              <button
+                onClick={openExportModal}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
+                aria-label="Exportera till PDF"
+                title="Exportera till PDF"
+              >
+                <FileDown className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggle}
+              className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
+              aria-label={dark ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
+            >
+              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="sm:hidden shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
+              aria-label="Öppna meny"
+            >
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
-        )}
-      </div>
-    </nav>
+
+          {/* Mobile dropdown menu */}
+          {menuOpen && (
+            <div className="sm:hidden pb-3 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+              <div className="flex flex-col gap-1">
+                {sections.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => scrollTo(s.id)}
+                    className={`px-3 py-2 rounded-md text-sm font-medium text-left transition-colors ${
+                      activeId === s.id
+                        ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+                {state.parsedFiles?.length > 0 && (
+                  <>
+                    <div className="h-px bg-slate-200 dark:bg-slate-700 my-2" />
+                    <button
+                      onClick={openExportModal}
+                      className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      Exportera PDF
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        facilityName={state.facilityName}
+      />
+    </>
   )
 }
