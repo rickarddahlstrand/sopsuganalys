@@ -79,11 +79,8 @@ export default function DashboardSection() {
               margin={{ top: 10, right: 10, bottom: 30, left: 50 }}
               axisLeft={{ tickSize: 0, tickPadding: 5 }}
               axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
-              pointSize={6}
-              pointColor={{ theme: 'background' }}
-              pointBorderWidth={2}
-              pointBorderColor={{ from: 'serieColor' }}
-              yScale={{ type: 'linear', min: Math.min(90, Math.floor(Math.min(...availPoints.map(p => p.y)) - 2)), max: 100 }}
+              pointSize={4}
+              yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
               useMesh
               enableSlices="x"
             />
