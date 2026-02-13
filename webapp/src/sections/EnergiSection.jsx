@@ -11,8 +11,11 @@ import ChartCard from '../components/common/ChartCard'
 import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
+import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
+
+const energyTrendLine = createTrendLineLayer('kWh', '#a16207')
 
 export default function EnergiSection() {
   const { state } = useData()
@@ -47,6 +50,7 @@ export default function EnergiSection() {
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
+            layers={['grid', 'axes', 'bars', energyTrendLine, 'markers', 'legends', 'annotations']}
           />
         </ChartCard>
 

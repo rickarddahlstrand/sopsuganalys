@@ -13,8 +13,11 @@ import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import StatusBadge from '../components/common/StatusBadge'
 import SortToggle from '../components/common/SortToggle'
+import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
+
+const alarmTrendLine = createTrendLineLayer('Larm', '#b91c1c')
 
 function applySortBar(data, valueKey, sortMode) {
   if (sortMode === 'default') return data
@@ -101,6 +104,7 @@ export default function LarmSection() {
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
+            layers={['grid', 'axes', 'bars', alarmTrendLine, 'markers', 'legends', 'annotations']}
           />
         </ChartCard>
 

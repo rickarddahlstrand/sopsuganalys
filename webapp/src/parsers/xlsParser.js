@@ -53,6 +53,54 @@ export function readSheet(workbook, sheetName, headerRow) {
 }
 
 /**
+ * Read Sheet1 header area (rows 0-9) to extract facility name and period.
+ * Returns { facilityName, period }
+ */
+export function readSheet1Header(workbook) {
+  const ws = workbook.Sheets['Sheet1']
+  if (!ws) return { facilityName: null, period: null }
+
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+  let facilityName = null
+  let period = null
+
+  // Scan first 10 rows for header info
+  for (let row = 0; row < 10 && row <= range.e.r; row++) {
+    // Collect all cell values in this row
+    const rowValues = []
+    for (let col = 0; col <= Math.min(range.e.c, 10); col++) {
+      const addr = XLSX.utils.encode_cell({ r: row, c: col })
+      const cell = ws[addr]
+      if (cell && cell.v != null && String(cell.v).trim()) {
+        rowValues.push(String(cell.v).trim())
+      }
+    }
+    const rowText = rowValues.join(' ')
+
+    // Look for "Monthly Report" followed by facility name
+    const monthlyMatch = rowText.match(/Monthly\s+Report\s+(.+)/i)
+    if (monthlyMatch && !facilityName) {
+      facilityName = monthlyMatch[1].trim()
+    }
+
+    // Look for "Service Report" followed by facility name
+    const serviceMatch = rowText.match(/Service\s+Report\s+(.+)/i)
+    if (serviceMatch && !facilityName) {
+      facilityName = serviceMatch[1].trim()
+    }
+
+    // Look for period patterns in this row
+    // "Period: January 2025" or just "January 2025"
+    const periodMatch = rowText.match(/(?:Period[:\s]+)?(\w+\s+\d{4})/i)
+    if (periodMatch && !period) {
+      period = periodMatch[1].trim()
+    }
+  }
+
+  return { facilityName, period }
+}
+
+/**
  * Read Sheet1 which has merged cells - special handling.
  * Labels in columns 0-5, Value in col 6, Comment in col 8.
  */

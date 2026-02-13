@@ -253,12 +253,12 @@ export const KPI_INFO = {
     'Inkluderar alla feltyper: DOES_NOT_OPEN, DOES_NOT_CLOSE, FULL_NOT_EMPTIED m.fl.',
 
   'H1 medel/mån':
-    'Genomsnittligt antal larm per månad under första halvåret (jan–jun). ' +
+    'H1 = Halvår 1 (januari–juni). Visar genomsnittligt antal larm per månad under årets första sex månader. ' +
     'Jämför med H2 för att se om larmfrekvensen förbättrats under året.',
 
   'H2 medel/mån':
-    'Genomsnittligt antal larm per månad under andra halvåret (jul–dec). ' +
-    'Lägre värde än H1 indikerar förbättring.',
+    'H2 = Halvår 2 (juli–december). Visar genomsnittligt antal larm per månad under årets sista sex månader. ' +
+    'Lägre värde än H1 indikerar att driften förbättrats.',
 
   'Larmtrend':
     'Larmtrendens riktning baserat på linjär regression: minskande, stabil eller ökande. ' +
@@ -299,10 +299,12 @@ export const KPI_INFO = {
     'Under 3% indikerar välfungerande automatik.',
 
   'Manuell H1':
-    'Manuell andel under första halvåret (jan–jun). Jämför med H2 för att se om automatiken förbättrats.',
+    'H1 = Halvår 1 (januari–juni). Visar andelen manuella ventilkommandon under årets första sex månader. ' +
+    'Jämför med H2 för att se om automatiken förbättrats under året.',
 
   'Manuell H2':
-    'Manuell andel under andra halvåret (jul–dec). Lägre värde än H1 tyder på förbättring.',
+    'H2 = Halvår 2 (juli–december). Visar andelen manuella ventilkommandon under årets sista sex månader. ' +
+    'Lägre värde än H1 tyder på att automatiken förbättrats.',
 
   'Sämsta manuellmånad':
     'Månaden med högst andel manuella kommandon. Kan bero på specifik incident eller att en gren haft automatikproblem.',

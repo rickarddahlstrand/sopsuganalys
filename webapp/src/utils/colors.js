@@ -31,6 +31,58 @@ export const ERROR_NAMES_SV = {
   ERROR_FEEDBACK_FROM_USER: 'Användarfel',
 }
 
+// Swedish translations for Sheet1 KPI labels
+export const KPI_NAMES_SV = {
+  'No of apartments': 'Antal lägenheter',
+  'Number of apartments': 'Antal lägenheter',
+  'No of inlets': 'Antal inkastar',
+  'Number of inlets': 'Antal inkastar',
+  'No of valves': 'Antal ventiler',
+  'Number of valves': 'Antal ventiler',
+  'No of branches': 'Antal grenar',
+  'Number of branches': 'Antal grenar',
+  'No of fractions': 'Antal fraktioner',
+  'Number of fractions': 'Antal fraktioner',
+  'No of transports': 'Antal transporter',
+  'Number of transports': 'Antal transporter',
+  'Total energy': 'Total energi',
+  'Energy consumption': 'Energiförbrukning',
+  'Energy': 'Energi',
+  'Total weight': 'Total vikt',
+  'Weight': 'Vikt',
+  'Operation time': 'Drifttid',
+  'Operating time': 'Drifttid',
+  'Vacuum level': 'Vakuumnivå',
+  'Average vacuum': 'Genomsnittligt vakuum',
+  'Max vacuum': 'Max vakuum',
+  'Min vacuum': 'Min vakuum',
+  'Collection cycles': 'Tömningscykler',
+  'Emptyings': 'Tömningar',
+  'Total emptyings': 'Totala tömningar',
+  'Availability': 'Tillgänglighet',
+  'System availability': 'Systemtillgänglighet',
+  'Alarms': 'Larm',
+  'Total alarms': 'Totala larm',
+  'Period': 'Period',
+  'Month': 'Månad',
+  'Year': 'År',
+}
+
+// Helper to translate KPI label
+export function translateKpiLabel(label) {
+  // Try exact match
+  if (KPI_NAMES_SV[label]) return KPI_NAMES_SV[label]
+
+  // Try case-insensitive match
+  const lowerLabel = label.toLowerCase()
+  for (const [en, sv] of Object.entries(KPI_NAMES_SV)) {
+    if (en.toLowerCase() === lowerLabel) return sv
+  }
+
+  // Return original if no translation found
+  return label
+}
+
 export const STATUS_COLORS = {
   critical: '#ef4444',
   warning: '#f97316',

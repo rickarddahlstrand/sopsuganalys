@@ -10,8 +10,12 @@ import KpiCard from '../components/common/KpiCard'
 import KpiGrid from '../components/common/KpiGrid'
 import ChartCard from '../components/common/ChartCard'
 import EmptyState from '../components/common/EmptyState'
+import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
+
+const energyTrendLine = createTrendLineLayer('kWh', '#a16207')
+const alarmTrendLine = createTrendLineLayer('Larm', '#b91c1c')
 
 export default function DashboardSection() {
   useAnalysis()
@@ -62,6 +66,7 @@ export default function DashboardSection() {
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
             enableGridY={true}
+            layers={['grid', 'axes', 'bars', energyTrendLine, 'markers', 'legends', 'annotations']}
           />
         </ChartCard>
 
@@ -98,6 +103,7 @@ export default function DashboardSection() {
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
+            layers={['grid', 'axes', 'bars', alarmTrendLine, 'markers', 'legends', 'annotations']}
           />
         </ChartCard>
 

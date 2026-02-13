@@ -1,4 +1,4 @@
-import { readSheet, readSheet1 } from './xlsParser'
+import { readSheet, readSheet1, readSheet1Header } from './xlsParser'
 
 function findCol(headers, ...patterns) {
   return headers.find(h => {
@@ -207,4 +207,9 @@ export function extractSheet13(workbook) {
 /** Sheet1: special merged-cell reader */
 export function extractSheet1(workbook) {
   return readSheet1(workbook)
+}
+
+/** Sheet1 header: facility name and period */
+export function extractSheet1Header(workbook) {
+  return readSheet1Header(workbook)
 }

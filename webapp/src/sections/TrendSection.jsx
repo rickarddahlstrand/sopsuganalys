@@ -78,8 +78,8 @@ export default function TrendSection() {
   // Correlation table
   const corrRows = t.correlations ? Object.entries(t.correlations).map(([pair, data]) => ({
     pair: pair.replace(/_/g, ' → '),
-    pearsonR: data.r != null ? data.r.toFixed(3) : '–',
-    pValue: data.p != null ? data.p < 0.001 ? '<0.001' : data.p.toFixed(3) : '–',
+    pearsonR: data.pearsonR != null && !isNaN(data.pearsonR) ? data.pearsonR.toFixed(3) : '–',
+    pValue: data.pearsonP != null && !isNaN(data.pearsonP) ? (data.pearsonP < 0.001 ? '<0.001' : data.pearsonP.toFixed(3)) : '–',
     interpretation: data.interpretation || '–',
   })) : []
 
@@ -95,8 +95,10 @@ export default function TrendSection() {
   // KPI values
   const trendClass = ft.energi?.trendClass || '–'
   const rSquared = ft.energi?.rSquared != null ? ft.energi.rSquared.toFixed(3) : '–'
-  const pearsonR = ft.energi?.pearsonR != null ? ft.energi.pearsonR.toFixed(3) : (corrRows[0]?.pearsonR || '–')
-  const pValue = ft.energi?.pValue != null ? (ft.energi.pValue < 0.001 ? '<0.001' : ft.energi.pValue.toFixed(3)) : (corrRows[0]?.pValue || '–')
+  // Get correlation from energi_vs_tömningar pair
+  const energiCorr = t.correlations?.['energi_vs_tömningar']
+  const pearsonR = energiCorr?.pearsonR != null && !isNaN(energiCorr.pearsonR) ? energiCorr.pearsonR.toFixed(3) : (corrRows[0]?.pearsonR || '–')
+  const pValue = energiCorr?.pearsonP != null && !isNaN(energiCorr.pearsonP) ? (energiCorr.pearsonP < 0.001 ? '<0.001' : energiCorr.pearsonP.toFixed(3)) : (corrRows[0]?.pValue || '–')
   const anomalyCount = t.anomalies?.length || 0
   const hasSeasonal = t.seasonalEnergy?.hasSeasonal
 

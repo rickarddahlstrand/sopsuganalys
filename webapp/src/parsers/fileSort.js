@@ -1,20 +1,145 @@
 import { MANAD_NAMN } from '../utils/months'
 import {
-  extractSheet1, extractSheet3, extractSheet5, extractSheet7,
+  extractSheet1, extractSheet1Header, extractSheet3, extractSheet5, extractSheet7,
   extractSheet9, extractSheet11, extractSheet13,
 } from './sheetReaders'
 
+// English month names for parsing
+const MONTH_NAMES_EN = {
+  'january': 1, 'february': 2, 'march': 3, 'april': 4,
+  'may': 5, 'june': 6, 'july': 7, 'august': 8,
+  'september': 9, 'october': 10, 'november': 11, 'december': 12,
+  'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
+  'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+}
+
+// Swedish month names for parsing
+const MONTH_NAMES_SV = {
+  'januari': 1, 'februari': 2, 'mars': 3, 'april': 4,
+  'maj': 5, 'juni': 6, 'juli': 7, 'augusti': 8,
+  'september': 9, 'oktober': 10, 'november': 11, 'december': 12,
+}
+
 /**
- * Extract month number and year from filename like "rapport_1_2025.xls"
- * Supports any year (2020–2099).
+ * Extract month number and year from Sheet1 content.
+ * Tries header area first, then key-value pairs, then filename as last resort.
  */
-function extractMonthYear(fileName) {
-  const m = fileName.match(/_(\d{1,2})_(\d{4})\.xls/i)
-  if (!m) return null
-  const monthNum = parseInt(m[1], 10)
-  const year = parseInt(m[2], 10)
-  if (monthNum < 1 || monthNum > 12) return null
-  return { monthNum, year }
+function extractMonthYearFromContent(header, sheet1Data, fileName) {
+  // First, try the period from the header area
+  if (header?.period) {
+    const parsed = parseDateString(header.period)
+    if (parsed) return parsed
+  }
+
+  // Look for period/date in Sheet1 key-value pairs
+  const periodLabels = ['period', 'month', 'date', 'månad', 'datum', 'rapport']
+
+  for (const row of sheet1Data || []) {
+    const label = String(row.label || '').toLowerCase()
+
+    // Check if this row contains period info
+    if (periodLabels.some(p => label.includes(p))) {
+      const value = String(row.value || '').trim()
+      const parsed = parseDateString(value)
+      if (parsed) return parsed
+    }
+  }
+
+  // Also check if any value in Sheet1 looks like a date
+  for (const row of sheet1Data || []) {
+    const value = String(row.value || '').trim()
+    const parsed = parseDateString(value)
+    if (parsed) return parsed
+  }
+
+  // Fallback to filename parsing (last resort)
+  return extractMonthYearFromFilename(fileName)
+}
+
+/**
+ * Parse various date string formats:
+ * - "January 2025", "2025-01", "01/2025", "2025/01"
+ * - "Jan 2025", "januari 2025"
+ */
+function parseDateString(str) {
+  if (!str) return null
+  const s = str.toLowerCase().trim()
+
+  // Try "Month YYYY" format (e.g., "January 2025", "januari 2025")
+  for (const [name, num] of Object.entries({ ...MONTH_NAMES_EN, ...MONTH_NAMES_SV })) {
+    if (s.includes(name)) {
+      const yearMatch = s.match(/\b(20\d{2})\b/)
+      if (yearMatch) {
+        return { monthNum: num, year: parseInt(yearMatch[1], 10) }
+      }
+    }
+  }
+
+  // Try "YYYY-MM" or "YYYY/MM" format
+  const isoMatch = s.match(/\b(20\d{2})[-/](\d{1,2})\b/)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    const monthNum = parseInt(isoMatch[2], 10)
+    if (monthNum >= 1 && monthNum <= 12) {
+      return { monthNum, year }
+    }
+  }
+
+  // Try "MM/YYYY" or "MM-YYYY" format
+  const revMatch = s.match(/\b(\d{1,2})[-/](20\d{2})\b/)
+  if (revMatch) {
+    const monthNum = parseInt(revMatch[1], 10)
+    const year = parseInt(revMatch[2], 10)
+    if (monthNum >= 1 && monthNum <= 12) {
+      return { monthNum, year }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Extract month number and year from filename.
+ * Supports various patterns:
+ * - "rapport_1_2025.xls"
+ * - "Service_-_monthly_report_HammarbyGard_1_2026 (1).xls"
+ * - "report_01_2025.xlsx"
+ */
+function extractMonthYearFromFilename(fileName) {
+  // Remove common suffixes like "(1)", "(2)", etc. and file extension
+  const cleaned = fileName.replace(/\s*\(\d+\)\s*/g, '').replace(/\.xlsx?$/i, '')
+
+  // Try pattern: _MM_YYYY or _M_YYYY at end of filename
+  const pattern1 = cleaned.match(/_(\d{1,2})_(\d{4})$/)
+  if (pattern1) {
+    const monthNum = parseInt(pattern1[1], 10)
+    const year = parseInt(pattern1[2], 10)
+    if (monthNum >= 1 && monthNum <= 12 && year >= 2000 && year <= 2099) {
+      return { monthNum, year }
+    }
+  }
+
+  // Try pattern: _YYYY_MM or _YYYY-MM at end
+  const pattern2 = cleaned.match(/_(\d{4})[-_](\d{1,2})$/)
+  if (pattern2) {
+    const year = parseInt(pattern2[1], 10)
+    const monthNum = parseInt(pattern2[2], 10)
+    if (monthNum >= 1 && monthNum <= 12 && year >= 2000 && year <= 2099) {
+      return { monthNum, year }
+    }
+  }
+
+  // Try to find _M_YYYY or _MM_YYYY anywhere in filename
+  const pattern3 = cleaned.match(/_(\d{1,2})_(\d{4})/)
+  if (pattern3) {
+    const monthNum = parseInt(pattern3[1], 10)
+    const year = parseInt(pattern3[2], 10)
+    if (monthNum >= 1 && monthNum <= 12 && year >= 2000 && year <= 2099) {
+      return { monthNum, year }
+    }
+  }
+
+  return null
 }
 
 /**
@@ -25,9 +150,32 @@ function extractMonthYear(fileName) {
  *   - month: display label, e.g. "Jan" (single year) or "Jan 25" (multi-year)
  */
 export function sortFilesByMonth(parsedFiles) {
+  // Track facility name (should be same across all files)
+  let facilityName = null
+
   const extracted = parsedFiles
     .map(f => {
-      const my = extractMonthYear(f.fileName)
+      // Extract header info first (facility name and period)
+      const header = extractSheet1Header(f.workbook)
+
+      // Store facility name from first file that has it
+      if (header.facilityName && !facilityName) {
+        facilityName = header.facilityName
+      }
+
+      // Extract sheet data
+      const sheets = {
+        sheet1: extractSheet1(f.workbook),
+        sheet3: extractSheet3(f.workbook),
+        sheet5: extractSheet5(f.workbook),
+        sheet7: extractSheet7(f.workbook),
+        sheet9: extractSheet9(f.workbook),
+        sheet11: extractSheet11(f.workbook),
+        sheet13: extractSheet13(f.workbook),
+      }
+
+      // Try to extract month/year from file content, fallback to filename
+      const my = extractMonthYearFromContent(header, sheets.sheet1, f.fileName)
       if (!my) return null
 
       return {
@@ -35,15 +183,7 @@ export function sortFilesByMonth(parsedFiles) {
         year: my.year,
         sortKey: my.year * 100 + my.monthNum,
         fileName: f.fileName,
-        sheets: {
-          sheet1: extractSheet1(f.workbook),
-          sheet3: extractSheet3(f.workbook),
-          sheet5: extractSheet5(f.workbook),
-          sheet7: extractSheet7(f.workbook),
-          sheet9: extractSheet9(f.workbook),
-          sheet11: extractSheet11(f.workbook),
-          sheet13: extractSheet13(f.workbook),
-        },
+        sheets,
       }
     })
     .filter(Boolean)
@@ -61,5 +201,9 @@ export function sortFilesByMonth(parsedFiles) {
     f.month = f.monthName
   }
 
-  return extracted
+  // Return both the files and metadata
+  return {
+    files: extracted,
+    facilityName,
+  }
 }

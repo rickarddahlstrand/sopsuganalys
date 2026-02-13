@@ -4,6 +4,7 @@ const DataContext = createContext()
 
 const initialState = {
   parsedFiles: null,
+  facilityName: null,
   energiDrift: null,
   ventiler: null,
   larm: null,
@@ -22,7 +23,11 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'SET_PARSED_FILES':
-      return { ...state, parsedFiles: action.payload }
+      return {
+        ...state,
+        parsedFiles: action.payload.files || action.payload,
+        facilityName: action.payload.facilityName || state.facilityName,
+      }
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload }
     case 'SET_PROGRESS':

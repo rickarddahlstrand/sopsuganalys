@@ -14,8 +14,11 @@ import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import SortToggle from '../components/common/SortToggle'
+import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
+
+const manualTrendLine = createTrendLineLayer('Manuella', '#7c3aed')
 
 function applySortBar(data, valueKey, sortMode) {
   if (sortMode === 'default') return data
