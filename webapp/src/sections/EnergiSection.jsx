@@ -93,10 +93,10 @@ export default function EnergiSection() {
 
       {ed.machineAvg.length > 0 && (
         <div className="mt-6">
-          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Maskinstatistik (årssnitt)<InfoButton text={TABLE_INFO['Maskinstatistik']} size={14} /></h4>
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Programstatistik (årssnitt)<InfoButton text={TABLE_INFO['Programstatistik']} size={14} /></h4>
           <DataTable
             columns={[
-              { key: 'name', label: 'Maskin' },
+              { key: 'name', label: 'Program' },
               { key: 'avgStarts', label: 'Starter/mån', render: v => fmt(v) },
               { key: 'avgHours', label: 'Timmar/mån', render: v => fmt1(v) },
               { key: 'avgKwh', label: 'kWh/mån', render: v => fmt(v) },

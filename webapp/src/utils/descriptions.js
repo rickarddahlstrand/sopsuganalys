@@ -333,10 +333,10 @@ export const KPI_INFO = {
 // ---- Table-level descriptions ----
 
 export const TABLE_INFO = {
-  'Maskinstatistik':
-    'Årsgenomsnitt per maskin (vakuumpump, kompressor etc). ' +
-    'Starter/mån visar antal start-stopp-cykler, Timmar/mån aktiv drifttid, kWh/mån energiförbrukning. ' +
-    'Högt antal starter med kort drifttid kan indikera ineffektiva cykler.',
+  'Programstatistik':
+    'Årsgenomsnitt per driftprogram (tömningsprogram, ventilationsprogram etc). ' +
+    'Starter/mån visar antal programkörningar, Timmar/mån aktiv körtid, kWh/mån energiförbrukning. ' +
+    'Högt antal starter med kort körtid kan indikera ineffektiva programcykler.',
 
   'Sämsta ventilerna':
     'Sopventiler rangordnade efter lägst genomsnittlig tillgänglighet. ' +

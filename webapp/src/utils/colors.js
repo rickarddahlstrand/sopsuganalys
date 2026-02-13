@@ -33,8 +33,28 @@ export const ERROR_NAMES_SV = {
 
 // Swedish translations for Sheet1 KPI labels
 export const KPI_NAMES_SV = {
+  // Fullständiga etiketter från rapporter (prioriteras)
+  'Inlets (no of DV\'s)': 'Antal inkastar',
+  'Branches (no of AV\'s)': 'Antal grenar',
+  'Sections (no of SE\'s)': 'Antal sektioner',
+  'In Operation Since': 'I drift sedan',
+  'Longest suction distance': 'Längsta sugsträcka',
+  'Pipe diameter': 'Rördiameter',
+  'No of exhausters': 'Antal fläktar',
+  'No of separators': 'Antal separatorer',
+  'EAP version': 'EAP-version',
   'No of apartments': 'Antal lägenheter',
   'Number of apartments': 'Antal lägenheter',
+
+  // Varianter med/utan apostrof
+  "Inlets (no of DV's)": 'Antal inkastar',
+  "Branches (no of AV's)": 'Antal grenar',
+  "Sections (no of SE's)": 'Antal sektioner',
+  'Inlets (no of DVs)': 'Antal inkastar',
+  'Branches (no of AVs)': 'Antal grenar',
+  'Sections (no of SEs)': 'Antal sektioner',
+
+  // Antal/Number
   'No of inlets': 'Antal inkastar',
   'Number of inlets': 'Antal inkastar',
   'No of valves': 'Antal ventiler',
@@ -45,38 +65,197 @@ export const KPI_NAMES_SV = {
   'Number of fractions': 'Antal fraktioner',
   'No of transports': 'Antal transporter',
   'Number of transports': 'Antal transporter',
+  'No of collections': 'Antal tömningar',
+  'Number of collections': 'Antal tömningar',
+  'No of cyclones': 'Antal cykloner',
+  'No of containers': 'Antal behållare',
+  'No of fans': 'Antal fläktar',
+  'No of pumps': 'Antal pumpar',
+  'No of compressors': 'Antal kompressorer',
+  'No of sections': 'Antal sektioner',
+
+  // Energi
   'Total energy': 'Total energi',
   'Energy consumption': 'Energiförbrukning',
   'Energy': 'Energi',
+  'Energy [kWh]': 'Energi [kWh]',
+  'Total Energy [kWh]': 'Total energi [kWh]',
+  'Energy per collection': 'Energi per tömning',
+  'kWh per collection': 'kWh per tömning',
+  'kWh/collection': 'kWh/tömning',
+
+  // Vikt
   'Total weight': 'Total vikt',
   'Weight': 'Vikt',
+  'Total Weight [ton]': 'Total vikt [ton]',
+  'Weight [ton]': 'Vikt [ton]',
+  'Weight per collection': 'Vikt per tömning',
+  'Kg per collection': 'Kg per tömning',
+
+  // Tid
   'Operation time': 'Drifttid',
   'Operating time': 'Drifttid',
+  'Operation Time [h]': 'Drifttid [h]',
+  'Total operation time': 'Total drifttid',
+  'Run time': 'Körtid',
+  'Running time': 'Körtid',
+  'Idle time': 'Vilotid',
+  'Downtime': 'Stilleståndstid',
+
+  // Vakuum
   'Vacuum level': 'Vakuumnivå',
   'Average vacuum': 'Genomsnittligt vakuum',
   'Max vacuum': 'Max vakuum',
   'Min vacuum': 'Min vakuum',
+  'Vacuum [kPa]': 'Vakuum [kPa]',
+  'Set vacuum': 'Inställt vakuum',
+  'Vacuum pressure': 'Vakuumtryck',
+
+  // Tömningar
   'Collection cycles': 'Tömningscykler',
   'Emptyings': 'Tömningar',
   'Total emptyings': 'Totala tömningar',
+  'Collections': 'Tömningar',
+  'Total collections': 'Totala tömningar',
+  'Emptying': 'Tömning',
+  'Collection': 'Tömning',
+  'Emptyings per day': 'Tömningar per dag',
+  'Collections per day': 'Tömningar per dag',
+
+  // Tillgänglighet
   'Availability': 'Tillgänglighet',
   'System availability': 'Systemtillgänglighet',
+  'Availability [%]': 'Tillgänglighet [%]',
+  'Average availability': 'Genomsnittlig tillgänglighet',
+  'Uptime': 'Drifttid',
+
+  // Larm
   'Alarms': 'Larm',
   'Total alarms': 'Totala larm',
+  'Alarm count': 'Antal larm',
+  'Active alarms': 'Aktiva larm',
+  'Alarm': 'Larm',
+
+  // Fraktioner
+  'Fraction': 'Fraktion',
+  'Fractions': 'Fraktioner',
+  'Residual waste': 'Restavfall',
+  'Food waste': 'Matavfall',
+  'Paper': 'Papper',
+  'Cardboard': 'Kartong',
+  'Plastic': 'Plast',
+  'Glass': 'Glas',
+  'Metal': 'Metall',
+  'Mixed waste': 'Blandat avfall',
+  'Organic waste': 'Organiskt avfall',
+
+  // Utrustning
+  'Fan': 'Fläkt',
+  'Fans': 'Fläktar',
+  'Pump': 'Pump',
+  'Pumps': 'Pumpar',
+  'Cyclone': 'Cyklon',
+  'Cyclones': 'Cykloner',
+  'Container': 'Behållare',
+  'Containers': 'Behållare',
+  'Compressor': 'Kompressor',
+  'Compressors': 'Kompressorer',
+  'Terminal': 'Terminal',
+  'Terminals': 'Terminaler',
+  'Valve': 'Ventil',
+  'Valves': 'Ventiler',
+  'Inlet': 'Inkast',
+  'Inlets': 'Inkastar',
+
+  // Status
+  'Status': 'Status',
+  'System status': 'Systemstatus',
+  'Current status': 'Aktuell status',
+  'Active': 'Aktiv',
+  'Inactive': 'Inaktiv',
+  'Running': 'Igång',
+  'Stopped': 'Stoppad',
+  'Error': 'Fel',
+  'Warning': 'Varning',
+  'OK': 'OK',
+  'Normal': 'Normal',
+
+  // Tid/Datum
   'Period': 'Period',
   'Month': 'Månad',
   'Year': 'År',
+  'Date': 'Datum',
+  'Time': 'Tid',
+  'Start date': 'Startdatum',
+  'End date': 'Slutdatum',
+  'Start time': 'Starttid',
+  'End time': 'Sluttid',
+  'Duration': 'Varaktighet',
+  'Hours': 'Timmar',
+  'Minutes': 'Minuter',
+  'Seconds': 'Sekunder',
+  'Days': 'Dagar',
+
+  // Övrigt
+  'Name': 'Namn',
+  'Description': 'Beskrivning',
+  'Type': 'Typ',
+  'ID': 'ID',
+  'Info': 'Info',
+  'Comment': 'Kommentar',
+  'Comments': 'Kommentarer',
+  'Note': 'Notering',
+  'Notes': 'Noteringar',
+  'Total': 'Totalt',
+  'Average': 'Genomsnitt',
+  'Mean': 'Medelvärde',
+  'Min': 'Min',
+  'Max': 'Max',
+  'Sum': 'Summa',
+  'Count': 'Antal',
+  'Value': 'Värde',
+  'Unit': 'Enhet',
+  'Location': 'Plats',
+  'Address': 'Adress',
+  'Building': 'Byggnad',
+  'Floor': 'Våning',
+  'Room': 'Rum',
+  'Area': 'Område',
+  'Zone': 'Zon',
+  'Branch': 'Gren',
+  'System': 'System',
+  'Facility': 'Anläggning',
+  'Site': 'Anläggning',
+  'Customer': 'Kund',
+  'Client': 'Kund',
+  'Service': 'Service',
+  'Maintenance': 'Underhåll',
+  'Report': 'Rapport',
+  'Monthly report': 'Månadsrapport',
+  'Service report': 'Servicerapport',
 }
 
 // Helper to translate KPI label
 export function translateKpiLabel(label) {
-  // Try exact match
-  if (KPI_NAMES_SV[label]) return KPI_NAMES_SV[label]
+  if (!label) return label
 
-  // Try case-insensitive match
-  const lowerLabel = label.toLowerCase()
+  const trimmed = label.trim()
+
+  // Try exact match first
+  if (KPI_NAMES_SV[trimmed]) return KPI_NAMES_SV[trimmed]
+
+  // Try case-insensitive exact match
+  const lowerLabel = trimmed.toLowerCase()
   for (const [en, sv] of Object.entries(KPI_NAMES_SV)) {
     if (en.toLowerCase() === lowerLabel) return sv
+  }
+
+  // Try matching with normalized whitespace
+  const normalized = trimmed.replace(/\s+/g, ' ')
+  if (KPI_NAMES_SV[normalized]) return KPI_NAMES_SV[normalized]
+
+  for (const [en, sv] of Object.entries(KPI_NAMES_SV)) {
+    if (en.toLowerCase().replace(/\s+/g, ' ') === normalized.toLowerCase()) return sv
   }
 
   // Return original if no translation found
