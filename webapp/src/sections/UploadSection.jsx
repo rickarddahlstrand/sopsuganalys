@@ -1,6 +1,6 @@
 import { useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, FileSpreadsheet, CheckCircle2, Loader2, ShieldCheck, HardDrive, Wind, ArrowRight } from 'lucide-react'
+import { Upload, FileSpreadsheet, CheckCircle2, Loader2, ShieldCheck, HardDrive, Wind, ArrowRight, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
 import JSZip from 'jszip'
 import { useData } from '../context/DataContext'
 import { parseXlsFile } from '../parsers/xlsParser'
@@ -18,6 +18,7 @@ export default function UploadSection() {
   const [files, setFiles] = useState([])
   const [parsing, setParsing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [showInstructions, setShowInstructions] = useState(true)
   const inputRef = useRef()
 
   const extractFromZip = async (zipFile) => {
@@ -275,6 +276,85 @@ export default function UploadSection() {
       >
         <ShieldCheck className="w-3.5 h-3.5" />
         <span>Alla filer processas lokalt — inget lämnar din dator</span>
+      </motion.div>
+
+      {/* Instructions section */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6, duration: 0.4 }}
+        className="mt-12"
+      >
+        <button
+          onClick={() => setShowInstructions(s => !s)}
+          className="w-full flex items-center justify-between px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors ring-1 ring-slate-200 dark:ring-slate-700"
+        >
+          <span className="flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-blue-500" />
+            Hur exporterar jag servicerapporter?
+          </span>
+          {showInstructions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        <AnimatePresence>
+          {showInstructions && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 space-y-4">
+                {/* Step 1 */}
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">1</div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Logga in på sopsugens adminsida</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Använd dina vanliga inloggningsuppgifter för att komma åt adminpanelen.</p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">2</div>
+                  <div className="flex-1 flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Välj "Rapporter" och sedan "Service-rapporter"</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Om du inte ser dessa alternativ i menyn, kontakta din driftpartner för att få åtkomst.</p>
+                    </div>
+                    <div className="flex-shrink-0 w-48 rounded-lg overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700">
+                      <img src="/step1.gif" alt="Navigera till service-rapporter" className="w-full" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">3</div>
+                  <div className="flex-1 flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Ladda ner varje rapport i Excel-format</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Klicka på Excel-ikonen för varje månad du vill analysera. Du kan ladda ner flera månader och år.</p>
+                    </div>
+                    <div className="flex-shrink-0 w-48 rounded-lg overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700">
+                      <img src="/step2.gif" alt="Ladda ner Excel-rapport" className="w-full" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 ring-1 ring-emerald-200/80 dark:ring-emerald-800/50">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs">4</div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Ladda upp filerna ovan</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Dra filerna till uppladdningsytan eller klicka för att välja. Du kan även ladda upp en zip-fil med alla rapporter.</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   )
