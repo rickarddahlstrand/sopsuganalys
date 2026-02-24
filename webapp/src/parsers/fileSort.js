@@ -21,7 +21,7 @@ const MONTH_NAMES_SV = {
 }
 
 /**
- * Extract month number and year from Sheet1 content.
+ * Extract month number and year from Sheet1 content, with filename as fallback.
  * Tries header area first, then key-value pairs, then filename as last resort.
  */
 function extractMonthYearFromContent(header, sheet1Data, fileName) {
@@ -101,9 +101,10 @@ function parseDateString(str) {
 /**
  * Extract month number and year from filename.
  * Supports various patterns:
- * - "rapport_1_2025.xls"
- * - "Service_-_monthly_report_HammarbyGard_1_2026 (1).xls"
- * - "report_01_2025.xlsx"
+ * - "rapport_1_2025.xls" / "Service_-_monthly_report_HammarbyGard_1_2026 (1).xls"
+ * - "rapport_januari_2025.xls" / "report_October_2025.xls"
+ * - "report_2025-01.xls" / "report_2025_01.xls"
+ * - "Service - monthly report Facility 1 2026.xls"
  */
 function extractMonthYearFromFilename(fileName) {
   // Remove common suffixes like "(1)", "(2)", etc. and file extension
@@ -135,6 +136,48 @@ function extractMonthYearFromFilename(fileName) {
     const monthNum = parseInt(pattern3[1], 10)
     const year = parseInt(pattern3[2], 10)
     if (monthNum >= 1 && monthNum <= 12 && year >= 2000 && year <= 2099) {
+      return { monthNum, year }
+    }
+  }
+
+  // Try month name (EN/SV) + year in filename
+  // e.g. "rapport_januari_2025" or "report_October_2025"
+  const lowerCleaned = cleaned.toLowerCase()
+  for (const [name, num] of Object.entries({ ...MONTH_NAMES_EN, ...MONTH_NAMES_SV })) {
+    if (lowerCleaned.includes(name)) {
+      const yearMatch = cleaned.match(/\b(20\d{2})\b/)
+      if (yearMatch) {
+        return { monthNum: num, year: parseInt(yearMatch[1], 10) }
+      }
+    }
+  }
+
+  // Try YYYY-MM or YYYY_MM anywhere in filename
+  const isoPattern = cleaned.match(/\b(20\d{2})[-_](\d{1,2})\b/)
+  if (isoPattern) {
+    const year = parseInt(isoPattern[1], 10)
+    const monthNum = parseInt(isoPattern[2], 10)
+    if (monthNum >= 1 && monthNum <= 12) {
+      return { monthNum, year }
+    }
+  }
+
+  // Try with spaces as separators: "something M YYYY" or "something MM YYYY"
+  const spacePattern = cleaned.match(/[\s_-](\d{1,2})\s+(20\d{2})/)
+  if (spacePattern) {
+    const monthNum = parseInt(spacePattern[1], 10)
+    const year = parseInt(spacePattern[2], 10)
+    if (monthNum >= 1 && monthNum <= 12) {
+      return { monthNum, year }
+    }
+  }
+
+  // Try MM-YYYY with hyphen
+  const revPattern = cleaned.match(/\b(\d{1,2})-(20\d{2})\b/)
+  if (revPattern) {
+    const monthNum = parseInt(revPattern[1], 10)
+    const year = parseInt(revPattern[2], 10)
+    if (monthNum >= 1 && monthNum <= 12) {
       return { monthNum, year }
     }
   }
@@ -174,9 +217,12 @@ export function sortFilesByMonth(parsedFiles) {
         sheet13: extractSheet13(f.workbook),
       }
 
-      // Try to extract month/year from file content, fallback to filename
+      // Try to extract month/year from filename first, then content
       const my = extractMonthYearFromContent(header, sheets.sheet1, f.fileName)
-      if (!my) return null
+      if (!my) {
+        console.warn(`[Sopsuganalys] Kunde inte avgöra månad för fil: ${f.fileName}`)
+        return null
+      }
 
       return {
         monthNum: my.monthNum,
@@ -187,7 +233,34 @@ export function sortFilesByMonth(parsedFiles) {
       }
     })
     .filter(Boolean)
-    .sort((a, b) => a.sortKey - b.sortKey)
+
+  // Safety net: if multiple files mapped to the same month, the content-based
+  // extraction likely picked up a static/wrong header. Fall back to filename.
+  if (extracted.length > 1) {
+    const monthCounts = new Map()
+    for (const f of extracted) {
+      if (!monthCounts.has(f.sortKey)) monthCounts.set(f.sortKey, [])
+      monthCounts.get(f.sortKey).push(f)
+    }
+
+    const hasDuplicates = [...monthCounts.values()].some(files => files.length > 1)
+    if (hasDuplicates) {
+      for (const [, files] of monthCounts) {
+        if (files.length <= 1) continue
+        // Try filename-based extraction for files sharing the same month
+        for (const f of files) {
+          const fromFilename = extractMonthYearFromFilename(f.fileName)
+          if (fromFilename) {
+            f.monthNum = fromFilename.monthNum
+            f.year = fromFilename.year
+            f.sortKey = fromFilename.year * 100 + fromFilename.monthNum
+          }
+        }
+      }
+    }
+  }
+
+  extracted.sort((a, b) => a.sortKey - b.sortKey)
 
   // Determine if multi-year
   const years = new Set(extracted.map(f => f.year))
