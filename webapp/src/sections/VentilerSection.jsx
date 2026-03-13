@@ -25,6 +25,8 @@ export default function VentilerSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const v = state.ventiler
+  const { compareMode, compareData, compareName } = state
+  const cv = compareData?.ventiler
 
   const printMode = state.printMode
   const [showAllChart, setShowAllChart] = useState(false)
@@ -53,7 +55,12 @@ export default function VentilerSection() {
 
   // Availability line with min/max band
   const availPoints = v.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
-  const availLine = [{ id: 'Medel', data: availPoints }]
+  const availLine = [{ id: compareMode ? (state.facilityName || 'Medel') : 'Medel', data: availPoints }]
+
+  // Add compare availability line
+  if (compareMode && cv?.monthlyAvailSummary) {
+    availLine.push({ id: compareName || 'Jämförelse', data: cv.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean })) })
+  }
   const availMin = availPoints.length > 0 ? Math.min(...availPoints.map(d => d.y)) : 0
 
   const minMaxLayer = ({ xScale, yScale }) => {
@@ -119,9 +126,9 @@ export default function VentilerSection() {
   return (
     <SectionWrapper id="ventiler" title="Ventilhälsa" icon={Activity} info={SECTION_INFO.ventiler}>
       <KpiGrid>
-        <KpiCard label="Ventiler" value={fmt(v.uniqueValves)} icon={Activity} color="blue" info={KPI_INFO['Ventiler']} />
-        <KpiCard label="Medeltillgänglighet" value={pct(v.overallAvail)} icon={Activity} color="emerald" info={KPI_INFO['Medeltillgänglighet']} />
-        <KpiCard label="Totala fel" value={fmt(v.totalErrors)} icon={Activity} color="red" info={KPI_INFO['Totala fel']} />
+        <KpiCard label="Ventiler" value={fmt(v.uniqueValves)} icon={Activity} color="blue" info={KPI_INFO['Ventiler']} compareValue={compareMode && cv ? fmt(cv.uniqueValves) : undefined} />
+        <KpiCard label="Medeltillgänglighet" value={pct(v.overallAvail)} icon={Activity} color="emerald" info={KPI_INFO['Medeltillgänglighet']} compareValue={compareMode && cv ? pct(cv.overallAvail) : undefined} />
+        <KpiCard label="Totala fel" value={fmt(v.totalErrors)} icon={Activity} color="red" info={KPI_INFO['Totala fel']} compareValue={compareMode && cv ? fmt(cv.totalErrors) : undefined} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
@@ -129,8 +136,8 @@ export default function VentilerSection() {
           <ResponsiveLine
             data={availLine}
             theme={theme}
-            colors={['#3b82f6']}
-            margin={{ top: 10, right: 10, bottom: 35, left: 55 }}
+            colors={compareMode && availLine.length > 1 ? ['#3b82f6', '#f97316'] : ['#3b82f6']}
+            margin={{ top: 10, right: compareMode && availLine.length > 1 ? 90 : 10, bottom: 35, left: 55 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             pointSize={6}
@@ -141,6 +148,7 @@ export default function VentilerSection() {
             useMesh
             enableSlices="x"
             layers={['grid', 'markers', 'axes', minMaxLayer, 'areas', 'lines', 'points', 'slices', 'mesh', 'legends']}
+            legends={compareMode && availLine.length > 1 ? [{ anchor: 'right', direction: 'column', translateX: 90, itemWidth: 80, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
           />
         </ChartCard>
 

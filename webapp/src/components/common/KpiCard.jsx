@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import InfoButton from './InfoButton'
 import { useData } from '../../context/DataContext'
 
-export default function KpiCard({ label, value, delta, icon: Icon, color = 'emerald', info }) {
+export default function KpiCard({ label, value, delta, icon: Icon, color = 'emerald', info, compareValue }) {
   const { state } = useData()
   const printMode = state.printMode
   const colorMap = {
@@ -24,6 +24,11 @@ export default function KpiCard({ label, value, delta, icon: Icon, color = 'emer
             {info && <InfoButton text={info} size={13} />}
           </span>
           <p className={`text-2xl font-bold mt-1 ${printMode ? '' : 'truncate'}`}>{value}</p>
+          {compareValue != null && (
+            <p className={`text-sm mt-0.5 text-blue-500 dark:text-blue-400 ${printMode ? '' : 'truncate'}`}>
+              vs {compareValue}
+            </p>
+          )}
           {delta != null && (
             <div className={`flex items-center gap-1 mt-1 text-sm ${
               delta > 0 ? 'text-red-500' : delta < 0 ? 'text-emerald-500' : 'text-slate-400'

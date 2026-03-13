@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Menu, X, FileDown } from 'lucide-react'
+import { Sun, Moon, Menu, X, FileDown, Share2 } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import { useData } from '../../context/DataContext'
 import Header from './Header'
 import ExportModal from '../common/ExportModal'
+import ShareModal from '../common/ShareModal'
 
 export default function StickyNav({ sections }) {
   const { dark, toggle } = useTheme()
@@ -11,6 +12,7 @@ export default function StickyNav({ sections }) {
   const [activeId, setActiveId] = useState(sections[0]?.id)
   const [menuOpen, setMenuOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -44,6 +46,16 @@ export default function StickyNav({ sections }) {
     setExportModalOpen(true)
   }
 
+  const openShareModal = () => {
+    setMenuOpen(false)
+    setShareModalOpen(true)
+  }
+
+  const allAnalysisReady =
+    state.energiDrift && state.ventiler && state.larm && state.sammanfattning &&
+    state.fraktionAnalys && state.grenDjupanalys && state.manuellAnalys &&
+    state.trendanalys && state.rekommendationer && state.drifterfarenheter
+
   return (
     <>
       <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/50 dark:border-slate-800/50">
@@ -71,6 +83,18 @@ export default function StickyNav({ sections }) {
 
             {/* Mobile spacer */}
             <div className="flex-1 sm:hidden" />
+
+            {/* Share button */}
+            {allAnalysisReady && (
+              <button
+                onClick={openShareModal}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
+                aria-label="Dela med nätverket"
+                title="Dela med nätverket"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            )}
 
             {/* PDF Export button */}
             {state.parsedFiles?.length > 0 && (
@@ -120,16 +144,27 @@ export default function StickyNav({ sections }) {
                     {s.label}
                   </button>
                 ))}
-                {state.parsedFiles?.length > 0 && (
+                {(state.parsedFiles?.length > 0 || allAnalysisReady) && (
                   <>
                     <div className="h-px bg-slate-200 dark:bg-slate-700 my-2" />
-                    <button
-                      onClick={openExportModal}
-                      className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70"
-                    >
-                      <FileDown className="w-4 h-4" />
-                      Exportera PDF
-                    </button>
+                    {allAnalysisReady && (
+                      <button
+                        onClick={openShareModal}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Dela med nätverket
+                      </button>
+                    )}
+                    {state.parsedFiles?.length > 0 && (
+                      <button
+                        onClick={openExportModal}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70"
+                      >
+                        <FileDown className="w-4 h-4" />
+                        Exportera PDF
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -142,6 +177,11 @@ export default function StickyNav({ sections }) {
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
         facilityName={state.facilityName}
+      />
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
       />
     </>
   )

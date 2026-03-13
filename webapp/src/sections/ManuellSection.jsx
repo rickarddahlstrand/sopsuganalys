@@ -32,6 +32,8 @@ export default function ManuellSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const man = state.manuellAnalys
+  const { compareMode, compareData, compareName } = state
+  const cman = compareData?.manuellAnalys
 
   const [top15Sort, setTop15Sort] = useState('default')
   const [branchSort, setBranchSort] = useState('default')
@@ -51,9 +53,14 @@ export default function ManuellSection() {
 
   // Manual% trend line
   const manPctLine = [{
-    id: 'Manuell%',
+    id: compareMode ? (state.facilityName || 'Manuell%') : 'Manuell%',
     data: man.monthly.map(m => ({ x: m.month, y: m.manualPct })),
   }]
+
+  // Add compare manual% line
+  if (compareMode && cman?.monthly) {
+    manPctLine.push({ id: compareName || 'Jämförelse', data: cman.monthly.map(m => ({ x: m.month, y: m.manualPct })) })
+  }
 
   // Top manual valves horizontal bar
   const allManualValves = man.topManualValves || []
@@ -83,9 +90,9 @@ export default function ManuellSection() {
   return (
     <SectionWrapper id="manuell" title="Manuella körningar" icon={Hand} info={SECTION_INFO.manuell}>
       <KpiGrid>
-        <KpiCard label="Manuella kommandon" value={fmt(man.totalMan)} icon={Hand} color="purple" info={KPI_INFO['Manuella kommandon']} />
-        <KpiCard label="Totala kommandon" value={fmt(man.totalAll)} icon={Hand} color="blue" info={KPI_INFO['Totala kommandon']} />
-        <KpiCard label="Manuell andel" value={`${man.yearPct}%`} icon={Hand} color="orange" info={KPI_INFO['Manuell andel']} />
+        <KpiCard label="Manuella kommandon" value={fmt(man.totalMan)} icon={Hand} color="purple" info={KPI_INFO['Manuella kommandon']} compareValue={compareMode && cman ? fmt(cman.totalMan) : undefined} />
+        <KpiCard label="Totala kommandon" value={fmt(man.totalAll)} icon={Hand} color="blue" info={KPI_INFO['Totala kommandon']} compareValue={compareMode && cman ? fmt(cman.totalAll) : undefined} />
+        <KpiCard label="Manuell andel" value={`${man.yearPct}%`} icon={Hand} color="orange" info={KPI_INFO['Manuell andel']} compareValue={compareMode && cman ? `${cman.yearPct}%` : undefined} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
@@ -111,8 +118,8 @@ export default function ManuellSection() {
           <ResponsiveLine
             data={manPctLine}
             theme={theme}
-            colors={['#a855f7']}
-            margin={{ top: 10, right: 10, bottom: 35, left: 55 }}
+            colors={compareMode && manPctLine.length > 1 ? ['#a855f7', '#3b82f6'] : ['#a855f7']}
+            margin={{ top: 10, right: compareMode && manPctLine.length > 1 ? 80 : 10, bottom: 35, left: 55 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             pointSize={6}
@@ -124,6 +131,7 @@ export default function ManuellSection() {
             yScale={{ type: 'linear', min: 0, max: 'auto' }}
             useMesh
             enableSlices="x"
+            legends={compareMode && manPctLine.length > 1 ? [{ anchor: 'right', direction: 'column', translateX: 80, itemWidth: 70, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
           />
         </ChartCard>
 

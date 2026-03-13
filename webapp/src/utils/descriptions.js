@@ -197,6 +197,21 @@ export const SECTION_INFO = {
     'Riskventiler är de viktigaste att åtgärda — de döljer sig bakom bra statistik ' +
     'men utgör en sårbarhet om operatören är frånvarande.',
 
+  eventlog:
+    'Loggfilsanalysen visar detaljerad information om alla händelser i systemet under den valda perioden. ' +
+    'Här kan du se sekvensgenomföranden, larm, komponenthälsa och tidsmönster.' +
+    '\n\n' +
+    'Så tolkar du loggfilsdata:\n' +
+    'Eventloggen fångar alla händelser som styrsystemet registrerar — från normala tömningssekvenser ' +
+    'till kritiska larm och driftstopp. Varje händelse har en tidsstämpel, allvarlighetsgrad och komponent. ' +
+    'Genom att analysera mönster i tid (vilka timmar/dagar har mest aktivitet), typ (vilka händelser dominerar) ' +
+    'och komponent (vilka delar av systemet genererar flest händelser) kan man identifiera systematiska problem ' +
+    'som inte syns i de aggregerade månadsanalyserna.' +
+    '\n\n' +
+    'Sekvensanalys visar hur tömningscyklerna genomförs — en komplett sekvens innebär att sopventilen öppnas, ' +
+    'avfallet transporteras och ventilen stängs korrekt. Avbrutna eller ofullständiga sekvenser ' +
+    'indikerar problem som kan leda till driftstörningar.',
+
   rekommendationer:
     'Rekommendationerna är automatiskt genererade baserat på alla föregående analyser. ' +
     'Prio 1 (AKUT) kräver omedelbar åtgärd, Prio 2 (HÖG) inom 1–3 månader, ' +
@@ -328,6 +343,30 @@ export const KPI_INFO = {
   'Säsong (KPI)':
     'Indikerar om energiförbrukningen har ett tydligt säsongsmönster. ' +
     'Säsongsmönster är normalt för anläggningar med skolgrenar eller stora temperaturvariationer.',
+
+  'eventlog_total':
+    'Totalt antal registrerade händelser i loggfilen under den valda perioden. ' +
+    'Inkluderar alla händelsetyper: sekvenser, larm, statusmeddelanden och felkoder.',
+
+  'eventlog_perday':
+    'Genomsnittligt antal händelser per dag under perioden. ' +
+    'Ger en normaliserad bild av aktivitetsnivån oavsett periodens längd.',
+
+  'eventlog_sequences_completed':
+    'Antal fullständigt genomförda tömningssekvenser under perioden. ' +
+    'En komplett sekvens innebär att sopventilen öppnats, avfallet transporterats och ventilen stängts korrekt.',
+
+  'eventlog_avg_time':
+    'Genomsnittlig tid per tömningssekvens i sekunder. ' +
+    'Längre tid kan indikera blockering, tryckförlust eller mekaniska problem i sopsugsledningen.',
+
+  'eventlog_critical':
+    'Antal händelser med kritisk allvarlighetsgrad (Critical eller Total stop). ' +
+    'Dessa kräver operatörsåtgärd och kan innebära driftstopp om de inte hanteras.',
+
+  'eventlog_power':
+    'Antal händelser relaterade till effektbegränsning (Power limitation). ' +
+    'Indikerar att vakuumpumparna eller elsystemet inte kunnat leverera full kapacitet under perioden.',
 }
 
 // ---- Table-level descriptions ----
@@ -773,4 +812,57 @@ export const CHART_INFO = {
     'möjliga läckor i sopsugsledningen, slitna packningar, tryckförluster). ' +
     'Punkter under linjen = månader med ovanligt hög effektivitet. ' +
     'Om alla punkter ligger tätt = stark och stabil korrelation (r>0,9).',
+
+  // Eventlog
+  'eventlog_severity':
+    'Fördelning av händelser per allvarlighetsgrad (severity).' +
+    '\n\n' +
+    'Diagrammet visar hur många händelser som registrerats per allvarlighetsnivå: ' +
+    'Info (normala drifthändelser), Warning (avvikelser som bör bevakas), ' +
+    'Critical (kräver operatörsåtgärd) och Total stop (driftstopp). ' +
+    '\n\n' +
+    'En hälsosam fördelning har en stor majoritet Info-händelser med få Critical och Total stop. ' +
+    'Om andelen Critical ökar över tid bör man undersöka vilka komponenter som genererar dessa händelser.',
+
+  'eventlog_timeline':
+    'Daglig tidslinje över larmhändelser under perioden.' +
+    '\n\n' +
+    'Varje punkt eller stapel representerar en dag och visar antal larmhändelser. ' +
+    'Tidslinjen gör det möjligt att identifiera specifika dagar med ovanligt hög aktivitet ' +
+    'och korrelera dessa med kända incidenter eller driftstörningar. ' +
+    '\n\n' +
+    'Kluster av dagar med höga larmantal kan indikera ett pågående problem ' +
+    'som inte har åtgärdats. Enstaka toppar kan bero på tillfälliga händelser.',
+
+  'eventlog_sequences':
+    'Sekvensanalys per dag — antal genomförda tömningssekvenser.' +
+    '\n\n' +
+    'Diagrammet visar hur många kompletta tömningssekvenser som genomförts varje dag. ' +
+    'En tömningssekvens innebär att styrsystemet öppnar sopventilen, vakuumet transporterar avfallet ' +
+    'genom sopsugsledningen till terminalen, och ventilen stängs korrekt. ' +
+    '\n\n' +
+    'Dagar med noll eller mycket få sekvenser kan indikera driftstopp. ' +
+    'Dagar med ovanligt många sekvenser kan bero på ansamlat avfall efter en störning.',
+
+  'eventlog_hourly':
+    'Aktivitetsmönster per timme på dygnet.' +
+    '\n\n' +
+    'Diagrammet visar hur händelserna fördelar sig över dygnets 24 timmar. ' +
+    'Normalt förväntas hög aktivitet under dagtid (07–18) när boende kastar avfall, ' +
+    'och lägre aktivitet nattetid. ' +
+    '\n\n' +
+    'Hög nattlig aktivitet kan indikera att systemet kör schemalagda tömningar ' +
+    'eller att det finns automatikproblem som genererar larm dygnet runt. ' +
+    'Toppar under specifika timmar kan avslöja mönster i avfallshanteringen.',
+
+  'eventlog_components':
+    'Komponenthälsa — vilka delar av systemet som genererar flest händelser.' +
+    '\n\n' +
+    'Diagrammet visar händelser uppdelat per komponent (sopventiler, sektioneringsventiler, ' +
+    'transportluftsventiler, vakuumpumpar, terminalen etc). ' +
+    '\n\n' +
+    'Komponenter med oproportionerligt många händelser bör prioriteras för underhåll. ' +
+    'Jämför med den övergripande ventilanalysen för att bekräfta vilka delar av systemet ' +
+    'som driver driftproblemen. En komponent med många Warning/Critical-händelser ' +
+    'kan vara på väg att orsaka driftstopp.',
 }

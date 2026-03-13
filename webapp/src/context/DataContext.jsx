@@ -15,10 +15,15 @@ const initialState = {
   trendanalys: null,
   rekommendationer: null,
   drifterfarenheter: null,
+  eventLog: null,
+  eventLogFiles: null,
   isLoading: false,
   progress: 0,
   progressLabel: '',
   printMode: false,
+  compareData: null,
+  compareName: null,
+  compareMode: false,
 }
 
 function reducer(state, action) {
@@ -35,8 +40,19 @@ function reducer(state, action) {
       return { ...state, progress: action.payload.progress, progressLabel: action.payload.label || '' }
     case 'SET_ANALYSIS':
       return { ...state, [action.key]: action.payload }
+    case 'SET_EVENT_LOG_FILES':
+      return { ...state, eventLogFiles: action.payload }
     case 'SET_PRINT_MODE':
       return { ...state, printMode: action.payload }
+    case 'SET_COMPARE':
+      return {
+        ...state,
+        compareData: action.payload.data,
+        compareName: action.payload.name,
+        compareMode: true,
+      }
+    case 'CLEAR_COMPARE':
+      return { ...state, compareData: null, compareName: null, compareMode: false }
     case 'RESET':
       return initialState
     default:

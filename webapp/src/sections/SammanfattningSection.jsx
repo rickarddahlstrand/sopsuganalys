@@ -25,6 +25,8 @@ export default function SammanfattningSection() {
   const theme = getNivoTheme(dark)
   const samm = state.sammanfattning
   const printMode = state.printMode
+  const { compareMode, compareData } = state
+  const csamm = compareData?.sammanfattning
   const [showAllCharts, setShowAllCharts] = useState(false)
 
   if (!samm) return <SectionWrapper id="sammanfattning" title="Sammanfattning" icon={FileText} info={SECTION_INFO.sammanfattning}><EmptyState loading={state.isLoading} /></SectionWrapper>
@@ -37,16 +39,20 @@ export default function SammanfattningSection() {
   return (
     <SectionWrapper id="sammanfattning" title="Sammanfattning" icon={FileText} info={SECTION_INFO.sammanfattning}>
       <KpiGrid>
-        {top6.map(kpi => (
-          <KpiCard
-            key={kpi.key}
-            label={translateKpiLabel(kpi.key)}
-            value={`${kpi.mean} ${kpi.unit}`}
-            icon={FileText}
-            color="blue"
-            info={KPI_INFO['Sammanfattning KPI']}
-          />
-        ))}
+        {top6.map(kpi => {
+          const cKpi = compareMode && csamm?.top6?.find(c => c.key === kpi.key)
+          return (
+            <KpiCard
+              key={kpi.key}
+              label={translateKpiLabel(kpi.key)}
+              value={`${kpi.mean} ${kpi.unit}`}
+              icon={FileText}
+              color="blue"
+              info={KPI_INFO['Sammanfattning KPI']}
+              compareValue={cKpi ? `${cKpi.mean} ${cKpi.unit}` : undefined}
+            />
+          )
+        })}
       </KpiGrid>
 
       {/* Charts only for KPIs with changing values */}

@@ -33,6 +33,9 @@ export default function GrenSection() {
   const theme = getNivoTheme(dark)
   const gren = state.grenDjupanalys
   const trend = state.trendanalys
+  const { compareMode, compareData, compareName } = state
+  const cgren = compareData?.grenDjupanalys
+  const ctrend = compareData?.trendanalys
 
   const [healthSort, setHealthSort] = useState('default')
   const [manualSort, setManualSort] = useState('default')
@@ -106,7 +109,7 @@ export default function GrenSection() {
   return (
     <SectionWrapper id="grenar" title="Grenanalys" icon={GitBranch} info={SECTION_INFO.grenar}>
       <KpiGrid>
-        <KpiCard label="Grenar" value={fmt(gren.totalBranches)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} />
+        <KpiCard label="Grenar" value={fmt(gren.totalBranches)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} compareValue={compareMode && cgren ? fmt(cgren.totalBranches) : undefined} />
         <KpiCard label="Grentyper" value={Object.keys(typeCount).length} icon={GitBranch} color="blue" info={KPI_INFO['Grentyper']} />
       </KpiGrid>
 

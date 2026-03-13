@@ -18,7 +18,7 @@ export default function Footer() {
           </p>
           <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            All analys sker lokalt — ingen data skickas över Internet
+            All analys sker lokalt — data delas bara om du väljer det
           </p>
         </div>
         <div className="flex items-center gap-3">

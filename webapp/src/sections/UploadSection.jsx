@@ -1,15 +1,18 @@
 import { useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, FileSpreadsheet, CheckCircle2, Loader2, ShieldCheck, HardDrive, Wind, ArrowRight, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
+import { Upload, FileSpreadsheet, CheckCircle2, Loader2, ShieldCheck, HardDrive, Wind, ArrowRight, ChevronDown, ChevronUp, HelpCircle, Globe } from 'lucide-react'
 import JSZip from 'jszip'
 import { useData } from '../context/DataContext'
 import { parseXlsFile } from '../parsers/xlsParser'
 import { sortFilesByMonth } from '../parsers/fileSort'
+import { isEventLogFile, readEventLogFile } from '../parsers/eventLogParser'
+import { analyzeEventLog } from '../analysis/eventLog'
 
 const FEATURES = [
   { icon: Wind, label: 'Energi & drift', desc: 'Förbruknings\u00ADtrender, fraktioner, maskinstatus' },
   { icon: HardDrive, label: 'Ventil\u00ADanalys', desc: 'Tillgänglighet, feltyper, gren\u00ADhälsa' },
   { icon: ShieldCheck, label: 'Rekommendationer', desc: 'Prioriterade åtgärder baserat på data' },
+  { icon: FileSpreadsheet, label: 'Loggfils\u00ADanalys', desc: 'Sekvenser, larm, komponent\u00ADhälsa från CSV-loggar' },
 ]
 
 export default function UploadSection() {
@@ -23,16 +26,16 @@ export default function UploadSection() {
 
   const extractFromZip = async (zipFile) => {
     const zip = await JSZip.loadAsync(zipFile)
-    const xlsEntries = Object.values(zip.files).filter(f => {
+    const entries = Object.values(zip.files).filter(f => {
       if (f.dir) return false
       const name = f.name.split('/').pop()
       // Skip macOS resource forks and hidden files
       if (name.startsWith('.') || name.startsWith('._')) return false
       if (f.name.includes('__MACOSX')) return false
-      return name.endsWith('.xls') || name.endsWith('.xlsx')
+      return name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')
     })
     const extracted = []
-    for (const entry of xlsEntries) {
+    for (const entry of entries) {
       const buf = await entry.async('arraybuffer')
       const name = entry.name.split('/').pop()
       extracted.push(new File([buf], name))
@@ -43,31 +46,45 @@ export default function UploadSection() {
   const handleFiles = useCallback(async (fileList) => {
     const allFiles = Array.from(fileList)
     const xlsFiles = []
+    const csvFiles = []
 
-    // Extract .xls from zip files, pass through direct .xls files
+    // Extract .xls from zip files, pass through direct .xls/.csv files
     for (const f of allFiles) {
       if (f.name.endsWith('.zip')) {
         try {
           const extracted = await extractFromZip(f)
-          xlsFiles.push(...extracted)
+          for (const ex of extracted) {
+            if (ex.name.endsWith('.csv')) {
+              csvFiles.push(ex)
+            } else {
+              xlsFiles.push(ex)
+            }
+          }
         } catch (err) {
           console.error(`Failed to unzip ${f.name}:`, err)
         }
       } else if (f.name.endsWith('.xls') || f.name.endsWith('.xlsx')) {
         xlsFiles.push(f)
+      } else if (f.name.endsWith('.csv')) {
+        csvFiles.push(f)
       }
     }
-    if (xlsFiles.length === 0) return
+    if (xlsFiles.length === 0 && csvFiles.length === 0) return
 
-    setFiles(xlsFiles.map(f => ({ name: f.name, status: 'pending' })))
+    const allDisplayFiles = [
+      ...xlsFiles.map(f => ({ name: f.name, status: 'pending', type: 'xls' })),
+      ...csvFiles.map(f => ({ name: f.name, status: 'pending', type: 'csv' })),
+    ]
+    setFiles(allDisplayFiles)
     setParsing(true)
 
+    // Parse XLS files
     const parsed = []
     for (let i = 0; i < xlsFiles.length; i++) {
       setFiles(prev => prev.map((f, idx) =>
         idx === i ? { ...f, status: 'parsing' } : f
       ))
-      setProgress(Math.round(((i) / xlsFiles.length) * 100))
+      setProgress(Math.round(((i) / (xlsFiles.length + csvFiles.length)) * 100))
 
       try {
         const result = await parseXlsFile(xlsFiles[i])
@@ -83,9 +100,38 @@ export default function UploadSection() {
       }
     }
 
+    // Parse CSV event log files
+    for (let i = 0; i < csvFiles.length; i++) {
+      const displayIdx = xlsFiles.length + i
+      setFiles(prev => prev.map((f, idx) =>
+        idx === displayIdx ? { ...f, status: 'parsing' } : f
+      ))
+      setProgress(Math.round(((xlsFiles.length + i) / (xlsFiles.length + csvFiles.length)) * 100))
+
+      try {
+        const isLog = await isEventLogFile(csvFiles[i])
+        if (isLog) {
+          const logData = await readEventLogFile(csvFiles[i])
+          const analysis = analyzeEventLog(logData.events)
+          dispatch({ type: 'SET_EVENT_LOG_FILES', payload: logData })
+          dispatch({ type: 'SET_ANALYSIS', key: 'eventLog', payload: analysis })
+        }
+        setFiles(prev => prev.map((f, idx) =>
+          idx === displayIdx ? { ...f, status: 'done' } : f
+        ))
+      } catch (err) {
+        console.error(`Failed to parse ${csvFiles[i].name}:`, err)
+        setFiles(prev => prev.map((f, idx) =>
+          idx === displayIdx ? { ...f, status: 'error' } : f
+        ))
+      }
+    }
+
     setProgress(100)
-    const sorted = sortFilesByMonth(parsed)
-    dispatch({ type: 'SET_PARSED_FILES', payload: sorted })
+    if (parsed.length > 0) {
+      const sorted = sortFilesByMonth(parsed)
+      dispatch({ type: 'SET_PARSED_FILES', payload: sorted })
+    }
     setParsing(false)
   }, [dispatch])
 
@@ -110,7 +156,7 @@ export default function UploadSection() {
           Analysera dina servicerapporter
         </h2>
         <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed">
-          Ladda upp servicerapporter i Excel-format för att få en interaktiv analys med trender, diagram och åtgärdsförslag.
+          Ladda upp servicerapporter (.xls) och loggfiler (.csv) för att få en interaktiv analys med trender, diagram och åtgärdsförslag.
         </p>
       </motion.div>
 
@@ -135,7 +181,7 @@ export default function UploadSection() {
             ref={inputRef}
             type="file"
             multiple
-            accept=".xls,.xlsx,.zip"
+            accept=".xls,.xlsx,.zip,.csv"
             className="hidden"
             onChange={e => handleFiles(e.target.files)}
           />
@@ -180,7 +226,7 @@ export default function UploadSection() {
                   Dra filer hit eller klicka för att välja
                 </p>
                 <p className="text-sm text-slate-400 dark:text-slate-500 mt-1.5">
-                  .xls / .xlsx / .zip — en eller flera månader och år
+                  .xls / .xlsx / .csv / .zip — rapporter och loggfiler
                 </p>
               </motion.div>
             )}
@@ -245,7 +291,7 @@ export default function UploadSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35, duration: 0.5 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8"
         >
           {FEATURES.map((feat, i) => (
             <motion.div
@@ -275,7 +321,26 @@ export default function UploadSection() {
         className="mt-8 flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium mx-auto w-fit"
       >
         <ShieldCheck className="w-3.5 h-3.5" />
-        <span>Alla filer processas lokalt — inget lämnar din dator</span>
+        <span>Alla filer processas lokalt — delning sker bara med ditt samtycke</span>
+      </motion.div>
+
+      {/* Network link */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.55, duration: 0.4 }}
+        className="mt-4 text-center"
+      >
+        <button
+          onClick={() => {
+            const el = document.getElementById('nätverk-browse')
+            if (el) el.scrollIntoView({ behavior: 'smooth' })
+          }}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          Bläddra i nätverket
+        </button>
       </motion.div>
 
       {/* Instructions section */}

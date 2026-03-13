@@ -14,6 +14,8 @@ import InfoButton from '../components/common/InfoButton'
 export default function DrifterfarenheterSection() {
   const { state } = useData()
   const drift = state.drifterfarenheter
+  const { compareMode, compareData, compareName } = state
+  const cdrift = compareData?.drifterfarenheter
 
   if (!drift) return <SectionWrapper id="drifterfarenheter" title="Drifterfarenheter" icon={Search} info={SECTION_INFO.drifterfarenheter}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -55,10 +57,10 @@ export default function DrifterfarenheterSection() {
       {/* Energy efficiency KPIs */}
       {energy?.kwhPerEmptyingMean != null && (
         <KpiGrid>
-          <KpiCard label="kWh/tömning (medel)" value={fmt2(energy.kwhPerEmptyingMean)} icon={Search} color="yellow" info={KPI_INFO['kWh/tömning (medel)']} />
+          <KpiCard label="kWh/tömning (medel)" value={fmt2(energy.kwhPerEmptyingMean)} icon={Search} color="yellow" info={KPI_INFO['kWh/tömning (medel)']} compareValue={compareMode && cdrift?.energy ? fmt2(cdrift.energy.kwhPerEmptyingMean) : undefined} />
           <KpiCard label="Bästa månad" value={`${energy.bestMonth} (${fmt2(energy.kwhPerEmptyingMin)})`} icon={Search} color="emerald" info={KPI_INFO['Bästa energimånad']} />
           <KpiCard label="Sämsta månad" value={`${energy.worstMonth} (${fmt2(energy.kwhPerEmptyingMax)})`} icon={Search} color="red" info={KPI_INFO['Sämsta energimånad']} />
-          <KpiCard label="Spridning" value={`${energy.spreadPct}%`} icon={Search} color="orange" info={KPI_INFO['Energispridning']} />
+          <KpiCard label="Spridning" value={`${energy.spreadPct}%`} icon={Search} color="orange" info={KPI_INFO['Energispridning']} compareValue={compareMode && cdrift?.energy ? `${cdrift.energy.spreadPct}%` : undefined} />
         </KpiGrid>
       )}
 
@@ -67,7 +69,7 @@ export default function DrifterfarenheterSection() {
         <div className="mt-6">
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Manuella körningar<InfoButton text={TABLE_INFO['Manuella körningar']} size={14} /></h4>
           <KpiGrid>
-            <KpiCard label="Manuell andel (år)" value={`${manualTrend.yearPct}%`} icon={Search} color="purple" info={KPI_INFO['Manuell andel (år)']} />
+            <KpiCard label="Manuell andel (år)" value={`${manualTrend.yearPct}%`} icon={Search} color="purple" info={KPI_INFO['Manuell andel (år)']} compareValue={compareMode && cdrift?.manualTrend ? `${cdrift.manualTrend.yearPct}%` : undefined} />
             <KpiCard label="H1" value={`${manualTrend.h1Pct}%`} icon={Search} color="blue" info={KPI_INFO['Manuell H1']} />
             <KpiCard label="H2" value={`${manualTrend.h2Pct}%`} icon={Search} color="cyan" info={KPI_INFO['Manuell H2']} />
             <KpiCard label="Sämsta månad" value={`${manualTrend.worstMonth} (${manualTrend.worstMonthPct}%)`} icon={Search} color="red" info={KPI_INFO['Sämsta manuellmånad']} />

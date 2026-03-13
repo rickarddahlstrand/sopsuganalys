@@ -23,7 +23,8 @@ export default function LarmSection() {
   const theme = getNivoTheme(dark)
   const l = state.larm
   const trend = state.trendanalys
-
+  const { compareMode, compareData, compareName } = state
+  const cl = compareData?.larm
 
   if (!l) return <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -74,9 +75,9 @@ export default function LarmSection() {
   return (
     <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}>
       <KpiGrid>
-        <KpiCard label="Totala larm" value={fmt(l.totalAlarms)} icon={Bell} color="red" info={KPI_INFO['Totala larm']} />
-        <KpiCard label="H1 medel/mån" value={fmt(l.h1Avg)} icon={Calendar} color="orange" info={KPI_INFO['H1 medel/mån']} />
-        <KpiCard label="H2 medel/mån" value={fmt(l.h2Avg)} icon={Calendar} color="yellow" info={KPI_INFO['H2 medel/mån']} />
+        <KpiCard label="Totala larm" value={fmt(l.totalAlarms)} icon={Bell} color="red" info={KPI_INFO['Totala larm']} compareValue={compareMode && cl ? fmt(cl.totalAlarms) : undefined} />
+        <KpiCard label="H1 medel/mån" value={fmt(l.h1Avg)} icon={Calendar} color="orange" info={KPI_INFO['H1 medel/mån']} compareValue={compareMode && cl ? fmt(cl.h1Avg) : undefined} />
+        <KpiCard label="H2 medel/mån" value={fmt(l.h2Avg)} icon={Calendar} color="yellow" info={KPI_INFO['H2 medel/mån']} compareValue={compareMode && cl ? fmt(cl.h2Avg) : undefined} />
         <KpiCard label="Trend" value={<StatusBadge status={l.trend === 'ökande' ? 'critical' : l.trend === 'minskande' ? 'ok' : 'info'} label={l.trend} />} icon={l.trend === 'ökande' ? TrendingUp : l.trend === 'minskande' ? TrendingDown : Minus} color="blue" info={KPI_INFO['Larmtrend']} />
       </KpiGrid>
 

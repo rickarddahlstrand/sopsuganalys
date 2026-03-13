@@ -22,35 +22,53 @@ export default function EnergiSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const ed = state.energiDrift
+  const { compareMode, compareData, compareName } = state
+  const ced = compareData?.energiDrift
 
   if (!ed) return <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
   const driftPoints = ed.energy.map(e => ({ x: e.month, y: e.operationTimeH }))
-  const driftData = [{ id: 'Drifttid', data: driftPoints }]
+  const driftData = [{ id: state.facilityName || 'Drifttid', data: driftPoints }]
+
+  // Add compare series for drift line
+  if (compareMode && ced) {
+    driftData.push({ id: compareName || 'Jämförelse', data: ced.energy.map(e => ({ x: e.month, y: e.operationTimeH })) })
+  }
+
+  // Energy bar data: grouped if comparing
+  const energyBarData = compareMode && ced
+    ? ed.energy.map(e => {
+        const cMatch = ced.energy.find(ce => ce.month === e.month)
+        return { month: e.month, [state.facilityName || 'Lokal']: e.energyKwh, ...(cMatch ? { [compareName || 'Jämförelse']: cMatch.energyKwh } : {}) }
+      })
+    : ed.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))
+  const energyBarKeys = compareMode && ced ? [state.facilityName || 'Lokal', compareName || 'Jämförelse'] : ['kWh']
 
   return (
     <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}>
       <KpiGrid>
-        <KpiCard label="Total energi" value={`${fmt(ed.totalEnergy)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} />
-        <KpiCard label="Total drifttid" value={`${fmt(ed.totalTime)} h`} icon={Zap} color="orange" info={KPI_INFO['Total drifttid']} />
-        <KpiCard label="Totala tömningar" value={fmt(ed.totalEmptyings)} icon={Zap} color="cyan" info={KPI_INFO['Totala tömningar']} />
+        <KpiCard label="Total energi" value={`${fmt(ed.totalEnergy)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} compareValue={compareMode && ced ? `${fmt(ced.totalEnergy)} kWh` : undefined} />
+        <KpiCard label="Total drifttid" value={`${fmt(ed.totalTime)} h`} icon={Zap} color="orange" info={KPI_INFO['Total drifttid']} compareValue={compareMode && ced ? `${fmt(ced.totalTime)} h` : undefined} />
+        <KpiCard label="Totala tömningar" value={fmt(ed.totalEmptyings)} icon={Zap} color="cyan" info={KPI_INFO['Totala tömningar']} compareValue={compareMode && ced ? fmt(ced.totalEmptyings) : undefined} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         <ChartCard title="Energiförbrukning per månad (kWh)" info={CHART_INFO['Energiförbrukning per månad (kWh)']}>
           <ResponsiveBar
-            data={ed.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))}
-            keys={['kWh']}
+            data={energyBarData}
+            keys={energyBarKeys}
             indexBy="month"
             theme={theme}
-            colors={['#eab308']}
+            colors={compareMode && ced ? ['#eab308', '#3b82f6'] : ['#eab308']}
+            groupMode={compareMode && ced ? 'grouped' : 'stacked'}
             borderRadius={4}
             padding={0.3}
-            margin={{ top: 10, right: 10, bottom: 30, left: 60 }}
+            margin={{ top: 10, right: compareMode && ced ? 80 : 10, bottom: 30, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
-            layers={['grid', 'axes', 'bars', energyTrendLine, 'markers', 'legends', 'annotations']}
+            layers={compareMode && ced ? ['grid', 'axes', 'bars', 'markers', 'legends', 'annotations'] : ['grid', 'axes', 'bars', energyTrendLine, 'markers', 'legends', 'annotations']}
+            legends={compareMode && ced ? [{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 80, itemWidth: 70, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
           />
         </ChartCard>
 
@@ -76,8 +94,8 @@ export default function EnergiSection() {
           <ResponsiveLine
             data={driftData}
             theme={theme}
-            colors={['#f97316']}
-            margin={{ top: 10, right: 10, bottom: 30, left: 60 }}
+            colors={compareMode && driftData.length > 1 ? ['#f97316', '#3b82f6'] : ['#f97316']}
+            margin={{ top: 10, right: compareMode && driftData.length > 1 ? 80 : 10, bottom: 30, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             pointSize={8}
@@ -87,6 +105,7 @@ export default function EnergiSection() {
             yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
             useMesh
             enableSlices="x"
+            legends={compareMode && driftData.length > 1 ? [{ anchor: 'right', direction: 'column', translateX: 80, itemWidth: 70, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
           />
         </ChartCard>
       </div>

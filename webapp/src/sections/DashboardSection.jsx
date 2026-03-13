@@ -23,7 +23,7 @@ export default function DashboardSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
 
-  const { energiDrift, ventiler, larm, trendanalys } = state
+  const { energiDrift, ventiler, larm, trendanalys, compareMode, compareData, compareName } = state
 
   if (!energiDrift) return <SectionWrapper id="dashboard" title="Överblick" icon={LayoutDashboard} info={SECTION_INFO.dashboard}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -34,21 +34,33 @@ export default function DashboardSection() {
   const valveCount = ventiler?.uniqueValves
   const branchCount = trendanalys?.branchAnalysis?.length
 
+  // Compare data
+  const ced = compareData?.energiDrift
+  const cv = compareData?.ventiler
+  const cl = compareData?.larm
+  const ct = compareData?.trendanalys
+
   // Mini chart data
   const energyData = energiDrift.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))
   const availPoints = ventiler?.monthlyAvailSummary?.map(m => ({ x: m.month, y: m.mean })) || []
-  const availData = availPoints.length > 0 ? [{ id: 'Tillgänglighet', data: availPoints }] : []
+  const availData = availPoints.length > 0 ? [{ id: state.facilityName || 'Tillgänglighet', data: availPoints }] : []
   const alarmData = larm?.monthlyTotals?.map(m => ({ month: m.month, Larm: m.total })) || []
+
+  // Add compare series to line chart
+  if (compareMode && cv?.monthlyAvailSummary) {
+    const cAvailPoints = cv.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
+    if (cAvailPoints.length > 0) availData.push({ id: compareName || 'Jämförelse', data: cAvailPoints })
+  }
 
   return (
     <SectionWrapper id="dashboard" title="Överblick" icon={LayoutDashboard} info={SECTION_INFO.dashboard}>
       <KpiGrid>
-        <KpiCard label="Total energi" value={`${fmt(totalKwh)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} />
-        <KpiCard label="Totala tömningar" value={fmt(totalEmptyings)} icon={Trash2} color="cyan" info={KPI_INFO['Totala tömningar']} />
-        <KpiCard label="Medeltillgänglighet" value={pct(avgAvail)} icon={Gauge} color="blue" info={KPI_INFO['Medeltillgänglighet']} />
-        <KpiCard label="Totala larm" value={fmt(totalAlarms)} icon={AlertTriangle} color="red" info={KPI_INFO['Totala larm']} />
-        <KpiCard label="Ventiler" value={fmt(valveCount)} icon={Activity} color="emerald" info={KPI_INFO['Ventiler']} />
-        <KpiCard label="Grenar" value={fmt(branchCount)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} />
+        <KpiCard label="Total energi" value={`${fmt(totalKwh)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} compareValue={compareMode && ced ? `${fmt(ced.totalEnergy)} kWh` : undefined} />
+        <KpiCard label="Totala tömningar" value={fmt(totalEmptyings)} icon={Trash2} color="cyan" info={KPI_INFO['Totala tömningar']} compareValue={compareMode && ced ? fmt(ced.totalEmptyings) : undefined} />
+        <KpiCard label="Medeltillgänglighet" value={pct(avgAvail)} icon={Gauge} color="blue" info={KPI_INFO['Medeltillgänglighet']} compareValue={compareMode && cv ? pct(cv.overallAvail) : undefined} />
+        <KpiCard label="Totala larm" value={fmt(totalAlarms)} icon={AlertTriangle} color="red" info={KPI_INFO['Totala larm']} compareValue={compareMode && cl ? fmt(cl.totalAlarms) : undefined} />
+        <KpiCard label="Ventiler" value={fmt(valveCount)} icon={Activity} color="emerald" info={KPI_INFO['Ventiler']} compareValue={compareMode && cv ? fmt(cv.uniqueValves) : undefined} />
+        <KpiCard label="Grenar" value={fmt(branchCount)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} compareValue={compareMode && ct ? fmt(ct.branchAnalysis?.length) : undefined} />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
@@ -75,7 +87,7 @@ export default function DashboardSection() {
             <ResponsiveLine
               data={availData}
               theme={theme}
-              colors={['#22c55e']}
+              colors={compareMode && availData.length > 1 ? ['#22c55e', '#3b82f6'] : ['#22c55e']}
               margin={{ top: 10, right: 10, bottom: 30, left: 50 }}
               axisLeft={{ tickSize: 0, tickPadding: 5 }}
               axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
@@ -83,6 +95,7 @@ export default function DashboardSection() {
               yScale={{ type: 'linear', min: 'auto', max: 'auto' }}
               useMesh
               enableSlices="x"
+              legends={compareMode && availData.length > 1 ? [{ anchor: 'top-right', direction: 'column', itemWidth: 100, itemHeight: 16, symbolSize: 8, translateY: -5, translateX: 5 }] : []}
             />
           )}
         </ChartCard>

@@ -19,6 +19,7 @@ export default function TrendSection() {
   const theme = getNivoTheme(dark)
   const t = state.trendanalys
   const man = state.manuellAnalys
+  const { compareMode, compareData, compareName } = state
 
   if (!t) return <SectionWrapper id="trender" title="Trender" icon={TrendingUp} info={SECTION_INFO.trender}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -40,7 +41,18 @@ export default function TrendSection() {
 
   // Manual percentage line
   const manualPctPoints = (man?.monthly || []).map(m => ({ x: m.month, y: m.manualPct }))
-  const manualPctLine = [{ id: 'Manuell andel', data: manualPctPoints }]
+  const manualPctLine = [{ id: state.facilityName || 'Manuell andel', data: manualPctPoints }]
+
+  // Add compare series
+  if (compareMode && compareData?.trendanalys) {
+    const cfd = compareData.trendanalys.facilityData || []
+    energyLine.push({ id: compareName || 'Jämförelse', data: cfd.map(d => ({ x: d.month, y: Math.round(d.energyKwh) })) })
+    effLine.push({ id: compareName || 'Jämförelse', data: cfd.map(d => ({ x: d.month, y: d.kwhPerEmptying })) })
+  }
+  if (compareMode && compareData?.manuellAnalys) {
+    const cman = compareData.manuellAnalys.monthly || []
+    manualPctLine.push({ id: compareName || 'Jämförelse', data: cman.map(m => ({ x: m.month, y: m.manualPct })) })
+  }
 
   // Scatter: energy vs emptyings
   const scatterData = [{

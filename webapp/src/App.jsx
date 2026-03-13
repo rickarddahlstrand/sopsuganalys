@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Info } from 'lucide-react'
+import { Info, X, BarChart3 } from 'lucide-react'
 import { useData } from './context/DataContext'
 import Header from './components/layout/Header'
 import StickyNav from './components/layout/StickyNav'
@@ -18,8 +18,10 @@ import LarmSection from './sections/LarmSection'
 import TrendSection from './sections/TrendSection'
 import DrifterfarenheterSection from './sections/DrifterfarenheterSection'
 import RekommendationerSection from './sections/RekommendationerSection'
+import EventLogSection from './sections/EventLogSection'
+import NetworkSection from './sections/NetworkSection'
 
-const sections = [
+const baseSections = [
   { id: 'dashboard', label: 'Överblick' },
   { id: 'trender', label: 'Trender' },
   { id: 'drifterfarenheter', label: 'Drift' },
@@ -32,6 +34,13 @@ const sections = [
   { id: 'manuell', label: 'Manuell' },
   { id: 'larm', label: 'Larm' },
 ]
+
+function getSections(hasEventLog) {
+  const s = [...baseSections]
+  if (hasEventLog) s.push({ id: 'eventlog', label: 'Loggfil' })
+  s.push({ id: 'nätverk', label: 'Nätverk' })
+  return s
+}
 
 function InfoHint() {
   const [visible, setVisible] = useState(false)
@@ -100,8 +109,24 @@ function InfoHint() {
 }
 
 export default function App() {
-  const { state } = useData()
-  const hasData = state.parsedFiles !== null
+  const { state, dispatch } = useData()
+  const hasData = state.parsedFiles !== null || state.eventLog !== null
+  const sections = getSections(!!state.eventLog)
+
+  // Listen for compare events from NetworkSection
+  useEffect(() => {
+    const handler = (e) => {
+      dispatch({ type: 'SET_COMPARE', payload: { data: e.detail.data, name: e.detail.name } })
+      // Scroll to top to see the comparison
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    window.addEventListener('sopsug-compare', handler)
+    return () => window.removeEventListener('sopsug-compare', handler)
+  }, [dispatch])
+
+  const clearCompare = useCallback(() => {
+    dispatch({ type: 'CLEAR_COMPARE' })
+  }, [dispatch])
 
   if (!hasData) {
     return (
@@ -118,6 +143,25 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <StickyNav sections={sections} />
       <InfoHint />
+      {state.compareMode && (
+        <div className="sticky top-[49px] z-40 bg-blue-50 dark:bg-blue-950/60 border-b border-blue-200 dark:border-blue-800 print:hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-blue-700 dark:text-blue-300 font-medium">
+                Jämförelseläge: {state.facilityName} vs {state.compareName}
+              </span>
+            </div>
+            <button
+              onClick={clearCompare}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              Avsluta jämförelse
+            </button>
+          </div>
+        </div>
+      )}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16 space-y-12 mt-4">
         <DashboardSection />
         <TrendSection />
@@ -130,6 +174,8 @@ export default function App() {
         <GrenSection />
         <ManuellSection />
         <LarmSection />
+        <EventLogSection />
+        <NetworkSection />
       </main>
       <Footer />
     </div>

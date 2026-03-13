@@ -30,6 +30,8 @@ export default function RekommendationerSection() {
   const printMode = state.printMode
   const [filter, setFilter] = useState(null)
   const rek = state.rekommendationer
+  const { compareMode, compareData, compareName } = state
+  const crek = compareData?.rekommendationer
 
   if (!rek) return <SectionWrapper id="rekommendationer" title="Rekommendationer" icon={ClipboardCheck} info={SECTION_INFO.rekommendationer}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -137,6 +139,24 @@ export default function RekommendationerSection() {
             ]}
             data={goals}
           />
+        </div>
+      )}
+
+      {/* Compare recommendations summary */}
+      {compareMode && crek?.recommendations?.length > 0 && (
+        <div className="mt-8 bg-blue-50 dark:bg-blue-950/30 rounded-xl p-5 border border-blue-200 dark:border-blue-800">
+          <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-3">{compareName} — Rekommendationer ({crek.recommendations.length} st)</h4>
+          <div className="space-y-2">
+            {crek.recommendations.slice(0, 5).map((rec, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <StatusBadge status={PRIO_COLORS[rec.prioritet]} label={`P${rec.prioritet}`} />
+                <span className="text-sm text-slate-600 dark:text-slate-400">{rec.mal}</span>
+              </div>
+            ))}
+            {crek.recommendations.length > 5 && (
+              <p className="text-xs text-slate-400 dark:text-slate-500">...och {crek.recommendations.length - 5} till</p>
+            )}
+          </div>
         </div>
       )}
 
