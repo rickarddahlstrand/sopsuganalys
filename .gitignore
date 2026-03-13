@@ -15,7 +15,6 @@ pythonapp/rapporter/*
 *.xlsx
 
 # Genererade filer som kan hamna utanför output/
-*.csv
 *.json
 *.pdf
 *.png
