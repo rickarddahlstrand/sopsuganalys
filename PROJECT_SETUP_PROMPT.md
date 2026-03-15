@@ -12,6 +12,37 @@ Hjälp mig sätta upp ett nytt projekt med följande stack och struktur. Skapa a
 - **CI/CD**: GitHub Actions (lint + build + test → Docker multi-arch build → GHCR push)
 - **Testning**: Vitest + @testing-library/react + jsdom
 
+### Bibliotek
+
+  - React – Komponentbaserad UI                                                                                                                                                                                                 
+  - Framer Motion – Animationer (motion.div, AnimatePresence)                                                                                                                                                                   
+  - Tailwind CSS – Utility-first styling                                                                                                                                                                                        
+  - Lucide React – Ikoner (X, Zap, Activity, Wind, etc.)               
+  - Backend Pocketbase
+  - Testmiljö: Bygger BESKRIV ENLIGT SNABBADMINUPPLÄGGET...
+  - Produktionsmiljö: Cloudflare tunnels, 
+
+
+### Tailwind-mönster                                                                                                                                                                                                              
+                                                                                                                                                                                                                                
+  - Färger: slate för neutral, semantiska färger per kategori (yellow, blue, cyan, orange, purple)                                                                                                                              
+  - Dark mode: dark: prefix genomgående                                                                                                                                                                                         
+  - Spacing: gap-3, p-6, mb-6 (konsekvent 3/6-skala)                                                                                                                                                                            
+  - Interaktivitet: hover:, transition-colors                                                                                                                                                                                   
+
+### Animationer                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                
+  - Skapa modala popup-rutor där det anses lämpligt.
+  - Drop-effekt vid stängning: Modal krymper (scale: 0.8), roterar (rotate: 15), faller nedåt (y: 400) med ease-in över 0.5s                                                                                                    
+  - Konsekvent: Samma animationer på liknande komponenter (alla modaler)                                                                                                                                                        
+                                                                           
+### Visuella element                                                                                                                                                                                                              
+                                                                                                                                                                                                                                
+  - Rundade bakgrunder (rounded-lg) med subtil färg (bg-slate-50 dark:bg-slate-800/50) istället för border-separatorer                                                                                                          
+  - Ikoner med färgkodade bakgrunder per kategori                                                                                                                                                                               
+  - Stöd för dark mode genomgående men gärna en liten knapp för att manuellt ändra detta längst ner på sidan.    
+
+
 ### Mappstruktur
 
 ```
