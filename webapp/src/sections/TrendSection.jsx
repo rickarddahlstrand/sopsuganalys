@@ -19,7 +19,7 @@ export default function TrendSection() {
   const theme = getNivoTheme(dark)
   const t = state.trendanalys
   const man = state.manuellAnalys
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
 
   if (!t) return <SectionWrapper id="trender" title="Trender" icon={TrendingUp} info={SECTION_INFO.trender}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -43,15 +43,19 @@ export default function TrendSection() {
   const manualPctPoints = (man?.monthly || []).map(m => ({ x: m.month, y: m.manualPct }))
   const manualPctLine = [{ id: state.facilityName || 'Manuell andel', data: manualPctPoints }]
 
-  // Add compare series
-  if (compareMode && compareData?.trendanalys) {
-    const cfd = compareData.trendanalys.facilityData || []
-    energyLine.push({ id: compareName || 'Jämförelse', data: cfd.map(d => ({ x: d.month, y: Math.round(d.energyKwh) })) })
-    effLine.push({ id: compareName || 'Jämförelse', data: cfd.map(d => ({ x: d.month, y: d.kwhPerEmptying })) })
-  }
-  if (compareMode && compareData?.manuellAnalys) {
-    const cman = compareData.manuellAnalys.monthly || []
-    manualPctLine.push({ id: compareName || 'Jämförelse', data: cman.map(m => ({ x: m.month, y: m.manualPct })) })
+  // Add compare series (multi-facility)
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      if (cf.data?.trendanalys) {
+        const cfd = cf.data.trendanalys.facilityData || []
+        energyLine.push({ id: cf.name || 'Jämförelse', data: cfd.map(d => ({ x: d.month, y: Math.round(d.energyKwh) })) })
+        effLine.push({ id: cf.name || 'Jämförelse', data: cfd.map(d => ({ x: d.month, y: d.kwhPerEmptying })) })
+      }
+      if (cf.data?.manuellAnalys) {
+        const cman = cf.data.manuellAnalys.monthly || []
+        manualPctLine.push({ id: cf.name || 'Jämförelse', data: cman.map(m => ({ x: m.month, y: m.manualPct })) })
+      }
+    }
   }
 
   // Scatter: energy vs emptyings

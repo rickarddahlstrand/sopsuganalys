@@ -15,6 +15,7 @@ import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import SortToggle from '../components/common/SortToggle'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
+import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
@@ -32,7 +33,7 @@ export default function ManuellSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const man = state.manuellAnalys
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
   const cman = compareData?.manuellAnalys
 
   const [top15Sort, setTop15Sort] = useState('default')
@@ -57,9 +58,14 @@ export default function ManuellSection() {
     data: man.monthly.map(m => ({ x: m.month, y: m.manualPct })),
   }]
 
-  // Add compare manual% line
-  if (compareMode && cman?.monthly) {
-    manPctLine.push({ id: compareName || 'Jämförelse', data: cman.monthly.map(m => ({ x: m.month, y: m.manualPct })) })
+  // Add compare manual% lines (multi-facility)
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      const cfman = cf.data?.manuellAnalys
+      if (cfman?.monthly) {
+        manPctLine.push({ id: cf.name || 'Jämförelse', data: cfman.monthly.map(m => ({ x: m.month, y: m.manualPct })) })
+      }
+    }
   }
 
   // Top manual valves horizontal bar
@@ -118,7 +124,7 @@ export default function ManuellSection() {
           <ResponsiveLine
             data={manPctLine}
             theme={theme}
-            colors={compareMode && manPctLine.length > 1 ? ['#a855f7', '#3b82f6'] : ['#a855f7']}
+            colors={compareMode && manPctLine.length > 1 ? ['#a855f7', ...COMPARE_COLORS.slice(0, manPctLine.length - 1)] : ['#a855f7']}
             margin={{ top: 10, right: compareMode && manPctLine.length > 1 ? 80 : 10, bottom: 35, left: 55 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}

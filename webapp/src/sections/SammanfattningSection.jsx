@@ -25,7 +25,7 @@ export default function SammanfattningSection() {
   const theme = getNivoTheme(dark)
   const samm = state.sammanfattning
   const printMode = state.printMode
-  const { compareMode, compareData } = state
+  const { compareMode, compareData, compareFacilities } = state
   const csamm = compareData?.sammanfattning
   const [showAllCharts, setShowAllCharts] = useState(false)
 

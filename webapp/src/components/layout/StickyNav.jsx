@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Menu, X, FileDown, Share2 } from 'lucide-react'
+import { Sun, Moon, Menu, X, FileDown, Upload } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import { useData } from '../../context/DataContext'
 import Header from './Header'
@@ -89,10 +89,10 @@ export default function StickyNav({ sections }) {
               <button
                 onClick={openShareModal}
                 className="shrink-0 p-1.5 rounded-lg hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors text-slate-500 dark:text-slate-400"
-                aria-label="Dela med nätverket"
-                title="Dela med nätverket"
+                aria-label="Ladda upp till databasen"
+                title="Ladda upp till databasen"
               >
-                <Share2 className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
               </button>
             )}
 
@@ -152,8 +152,8 @@ export default function StickyNav({ sections }) {
                         onClick={openShareModal}
                         className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-left transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/70"
                       >
-                        <Share2 className="w-4 h-4" />
-                        Dela med nätverket
+                        <Upload className="w-4 h-4" />
+                        Ladda upp till databasen
                       </button>
                     )}
                     {state.parsedFiles?.length > 0 && (

@@ -15,7 +15,7 @@ export default function FraktionSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const fa = state.fraktionAnalys
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
 
   if (!fa) return <SectionWrapper id="fraktioner" title="Fraktioner" icon={Layers} info={SECTION_INFO.fraktioner}><EmptyState loading={state.isLoading} /></SectionWrapper>
 

@@ -33,7 +33,7 @@ export default function GrenSection() {
   const theme = getNivoTheme(dark)
   const gren = state.grenDjupanalys
   const trend = state.trendanalys
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
   const cgren = compareData?.grenDjupanalys
   const ctrend = compareData?.trendanalys
 

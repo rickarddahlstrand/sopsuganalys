@@ -10,9 +10,13 @@ export function useCompare() {
     const record = await getAnalysis(analysisId)
     const parsed = deserializeAnalysis(record)
     dispatch({
-      type: 'SET_COMPARE',
-      payload: { data: parsed, name: parsed.facilityName },
+      type: 'ADD_COMPARE_FACILITY',
+      payload: { id: analysisId, name: parsed.facilityName, data: parsed },
     })
+  }, [dispatch])
+
+  const removeComparison = useCallback((id) => {
+    dispatch({ type: 'REMOVE_COMPARE_FACILITY', payload: id })
   }, [dispatch])
 
   const clearComparison = useCallback(() => {
@@ -20,10 +24,12 @@ export function useCompare() {
   }, [dispatch])
 
   return {
+    compareFacilities: state.compareFacilities,
     compareData: state.compareData,
     compareName: state.compareName,
     compareMode: state.compareMode,
     loadComparison,
+    removeComparison,
     clearComparison,
   }
 }

@@ -14,7 +14,7 @@ import InfoButton from '../components/common/InfoButton'
 export default function DrifterfarenheterSection() {
   const { state } = useData()
   const drift = state.drifterfarenheter
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
   const cdrift = compareData?.drifterfarenheter
 
   if (!drift) return <SectionWrapper id="drifterfarenheter" title="Drifterfarenheter" icon={Search} info={SECTION_INFO.drifterfarenheter}><EmptyState loading={state.isLoading} /></SectionWrapper>

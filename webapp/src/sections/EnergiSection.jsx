@@ -12,6 +12,7 @@ import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
+import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
@@ -22,7 +23,7 @@ export default function EnergiSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const ed = state.energiDrift
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
   const ced = compareData?.energiDrift
 
   if (!ed) return <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}><EmptyState loading={state.isLoading} /></SectionWrapper>
@@ -30,19 +31,34 @@ export default function EnergiSection() {
   const driftPoints = ed.energy.map(e => ({ x: e.month, y: e.operationTimeH }))
   const driftData = [{ id: state.facilityName || 'Drifttid', data: driftPoints }]
 
-  // Add compare series for drift line
-  if (compareMode && ced) {
-    driftData.push({ id: compareName || 'Jämförelse', data: ced.energy.map(e => ({ x: e.month, y: e.operationTimeH })) })
+  // Add compare series for drift line (multi-facility)
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      const cfed = cf.data?.energiDrift
+      if (cfed?.energy) {
+        driftData.push({ id: cf.name || 'Jämförelse', data: cfed.energy.map(e => ({ x: e.month, y: e.operationTimeH })) })
+      }
+    }
   }
 
   // Energy bar data: grouped if comparing
-  const energyBarData = compareMode && ced
+  const hasCompareEnergy = compareMode && compareFacilities?.some(cf => cf.data?.energiDrift)
+  const energyBarData = hasCompareEnergy
     ? ed.energy.map(e => {
-        const cMatch = ced.energy.find(ce => ce.month === e.month)
-        return { month: e.month, [state.facilityName || 'Lokal']: e.energyKwh, ...(cMatch ? { [compareName || 'Jämförelse']: cMatch.energyKwh } : {}) }
+        const row = { month: e.month, [state.facilityName || 'Lokal']: e.energyKwh }
+        for (const cf of compareFacilities) {
+          const cfed = cf.data?.energiDrift
+          if (cfed?.energy) {
+            const cMatch = cfed.energy.find(ce => ce.month === e.month)
+            if (cMatch) row[cf.name || 'Jämförelse'] = cMatch.energyKwh
+          }
+        }
+        return row
       })
     : ed.energy.map(e => ({ month: e.month, kWh: e.energyKwh }))
-  const energyBarKeys = compareMode && ced ? [state.facilityName || 'Lokal', compareName || 'Jämförelse'] : ['kWh']
+  const energyBarKeys = hasCompareEnergy
+    ? [state.facilityName || 'Lokal', ...compareFacilities.filter(cf => cf.data?.energiDrift).map(cf => cf.name || 'Jämförelse')]
+    : ['kWh']
 
   return (
     <SectionWrapper id="energi" title="Energi & Drift" icon={Zap} info={SECTION_INFO.energi}>
@@ -59,16 +75,16 @@ export default function EnergiSection() {
             keys={energyBarKeys}
             indexBy="month"
             theme={theme}
-            colors={compareMode && ced ? ['#eab308', '#3b82f6'] : ['#eab308']}
-            groupMode={compareMode && ced ? 'grouped' : 'stacked'}
+            colors={hasCompareEnergy ? ['#eab308', ...COMPARE_COLORS.slice(0, compareFacilities.length)] : ['#eab308']}
+            groupMode={hasCompareEnergy ? 'grouped' : 'stacked'}
             borderRadius={4}
             padding={0.3}
-            margin={{ top: 10, right: compareMode && ced ? 80 : 10, bottom: 30, left: 60 }}
+            margin={{ top: 10, right: hasCompareEnergy ? 80 : 10, bottom: 30, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
-            layers={compareMode && ced ? ['grid', 'axes', 'bars', 'markers', 'legends', 'annotations'] : ['grid', 'axes', 'bars', energyTrendLine, 'markers', 'legends', 'annotations']}
-            legends={compareMode && ced ? [{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 80, itemWidth: 70, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
+            layers={hasCompareEnergy ? ['grid', 'axes', 'bars', 'markers', 'legends', 'annotations'] : ['grid', 'axes', 'bars', energyTrendLine, 'markers', 'legends', 'annotations']}
+            legends={hasCompareEnergy ? [{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 80, itemWidth: 70, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
           />
         </ChartCard>
 
@@ -94,7 +110,7 @@ export default function EnergiSection() {
           <ResponsiveLine
             data={driftData}
             theme={theme}
-            colors={compareMode && driftData.length > 1 ? ['#f97316', '#3b82f6'] : ['#f97316']}
+            colors={compareMode && driftData.length > 1 ? ['#f97316', ...COMPARE_COLORS.slice(0, driftData.length - 1)] : ['#f97316']}
             margin={{ top: 10, right: compareMode && driftData.length > 1 ? 80 : 10, bottom: 30, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}

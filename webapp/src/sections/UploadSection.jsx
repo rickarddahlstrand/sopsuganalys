@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, FileSpreadsheet, CheckCircle2, Loader2, ShieldCheck, HardDrive, Wind, ArrowRight, ChevronDown, ChevronUp, HelpCircle, Globe } from 'lucide-react'
 import JSZip from 'jszip'
@@ -7,6 +7,7 @@ import { parseXlsFile } from '../parsers/xlsParser'
 import { sortFilesByMonth } from '../parsers/fileSort'
 import { isEventLogFile, readEventLogFile } from '../parsers/eventLogParser'
 import { analyzeEventLog } from '../analysis/eventLog'
+import NetworkBrowser from '../components/common/NetworkBrowser'
 
 const FEATURES = [
   { icon: Wind, label: 'Energi & drift', desc: 'Förbruknings\u00ADtrender, fraktioner, maskinstatus' },
@@ -22,14 +23,29 @@ export default function UploadSection() {
   const [parsing, setParsing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [showInstructions, setShowInstructions] = useState(true)
+  const [networkMode, setNetworkMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('network') === 'true'
+  })
   const inputRef = useRef()
+
+  // Ctrl+Shift+N / Cmd+Shift+N toggles network mode
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.shiftKey && (e.ctrlKey || e.metaKey) && e.key === 'N') {
+        e.preventDefault()
+        setNetworkMode(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const extractFromZip = async (zipFile) => {
     const zip = await JSZip.loadAsync(zipFile)
     const entries = Object.values(zip.files).filter(f => {
       if (f.dir) return false
       const name = f.name.split('/').pop()
-      // Skip macOS resource forks and hidden files
       if (name.startsWith('.') || name.startsWith('._')) return false
       if (f.name.includes('__MACOSX')) return false
       return name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')
@@ -48,7 +64,6 @@ export default function UploadSection() {
     const xlsFiles = []
     const csvFiles = []
 
-    // Extract .xls from zip files, pass through direct .xls/.csv files
     for (const f of allFiles) {
       if (f.name.endsWith('.zip')) {
         try {
@@ -71,6 +86,9 @@ export default function UploadSection() {
     }
     if (xlsFiles.length === 0 && csvFiles.length === 0) return
 
+    // Store original File objects before parsing (for later upload to DB)
+    dispatch({ type: 'SET_ORIGINAL_FILES', payload: { xlsFiles: [...xlsFiles], csvFiles: [...csvFiles] } })
+
     const allDisplayFiles = [
       ...xlsFiles.map(f => ({ name: f.name, status: 'pending', type: 'xls' })),
       ...csvFiles.map(f => ({ name: f.name, status: 'pending', type: 'csv' })),
@@ -78,7 +96,6 @@ export default function UploadSection() {
     setFiles(allDisplayFiles)
     setParsing(true)
 
-    // Parse XLS files
     const parsed = []
     for (let i = 0; i < xlsFiles.length; i++) {
       setFiles(prev => prev.map((f, idx) =>
@@ -100,7 +117,6 @@ export default function UploadSection() {
       }
     }
 
-    // Parse CSV event log files
     for (let i = 0; i < csvFiles.length; i++) {
       const displayIdx = xlsFiles.length + i
       setFiles(prev => prev.map((f, idx) =>
@@ -186,7 +202,6 @@ export default function UploadSection() {
             onChange={e => handleFiles(e.target.files)}
           />
 
-          {/* Animated icon area */}
           <motion.div
             animate={dragOver ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
@@ -324,24 +339,36 @@ export default function UploadSection() {
         <span>Alla filer processas lokalt — delning sker bara med ditt samtycke</span>
       </motion.div>
 
-      {/* Network link */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.55, duration: 0.4 }}
-        className="mt-4 text-center"
-      >
-        <button
-          onClick={() => {
-            const el = document.getElementById('nätverk-browse')
-            if (el) el.scrollIntoView({ behavior: 'smooth' })
-          }}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          Bläddra i nätverket
-        </button>
-      </motion.div>
+      {/* Network browser (hidden mode - activated via Ctrl+Shift+N or ?network=true) */}
+      <AnimatePresence>
+        {networkMode && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-8 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700/80 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-blue-500" />
+                  <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200">
+                    Ladda från nätverket
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setNetworkMode(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  Dölj
+                </button>
+              </div>
+              <NetworkBrowser />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Instructions section */}
       <motion.div
@@ -371,7 +398,6 @@ export default function UploadSection() {
               className="overflow-hidden"
             >
               <div className="mt-4 space-y-4">
-                {/* Step 1 */}
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
                   <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">1</div>
                   <div>
@@ -380,12 +406,11 @@ export default function UploadSection() {
                   </div>
                 </div>
 
-                {/* Step 2 */}
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
                   <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">2</div>
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-start gap-3">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Välj "Rapporter" och sedan "Service-rapporter"</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Välj &quot;Rapporter&quot; och sedan &quot;Service-rapporter&quot;</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Om du inte ser dessa alternativ i menyn, kontakta din driftpartner för att få åtkomst.</p>
                     </div>
                     <div className="flex-shrink-0 w-48 rounded-lg overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700">
@@ -394,7 +419,6 @@ export default function UploadSection() {
                   </div>
                 </div>
 
-                {/* Step 3 */}
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
                   <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">3</div>
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-start gap-3">
@@ -408,7 +432,6 @@ export default function UploadSection() {
                   </div>
                 </div>
 
-                {/* Step 4 */}
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 ring-1 ring-emerald-200/80 dark:ring-emerald-800/50">
                   <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs">4</div>
                   <div>
@@ -421,6 +444,18 @@ export default function UploadSection() {
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Discreet network link */}
+      {!networkMode && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => setNetworkMode(true)}
+            className="text-[11px] text-slate-300 dark:text-slate-700 hover:text-slate-400 dark:hover:text-slate-500 transition-colors"
+          >
+            nätverk
+          </button>
+        </div>
+      )}
     </div>
   )
 }

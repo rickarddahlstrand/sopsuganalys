@@ -19,7 +19,7 @@ import TrendSection from './sections/TrendSection'
 import DrifterfarenheterSection from './sections/DrifterfarenheterSection'
 import RekommendationerSection from './sections/RekommendationerSection'
 import EventLogSection from './sections/EventLogSection'
-import NetworkSection from './sections/NetworkSection'
+import CompareSection from './sections/CompareSection'
 
 const baseSections = [
   { id: 'dashboard', label: 'Överblick' },
@@ -33,12 +33,12 @@ const baseSections = [
   { id: 'grenar', label: 'Grenar' },
   { id: 'manuell', label: 'Manuell' },
   { id: 'larm', label: 'Larm' },
+  { id: 'jamfor', label: 'Jämför' },
 ]
 
 function getSections(hasEventLog) {
   const s = [...baseSections]
   if (hasEventLog) s.push({ id: 'eventlog', label: 'Loggfil' })
-  s.push({ id: 'nätverk', label: 'Nätverk' })
   return s
 }
 
@@ -110,14 +110,13 @@ function InfoHint() {
 
 export default function App() {
   const { state, dispatch } = useData()
-  const hasData = state.parsedFiles !== null || state.eventLog !== null
+  const hasData = state.parsedFiles !== null || state.eventLog !== null || state.fromNetwork
   const sections = getSections(!!state.eventLog)
 
-  // Listen for compare events from NetworkSection
+  // Listen for compare events
   useEffect(() => {
     const handler = (e) => {
       dispatch({ type: 'SET_COMPARE', payload: { data: e.detail.data, name: e.detail.name } })
-      // Scroll to top to see the comparison
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
     window.addEventListener('sopsug-compare', handler)
@@ -149,8 +148,13 @@ export default function App() {
             <div className="flex items-center gap-2 text-sm">
               <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span className="text-blue-700 dark:text-blue-300 font-medium">
-                Jämförelseläge: {state.facilityName} vs {state.compareName}
+                Jämförelseläge: {state.facilityName} vs {state.compareFacilities.map(f => f.name).join(', ')}
               </span>
+              {state.compareFacilities.length > 1 && (
+                <span className="text-xs bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full">
+                  {state.compareFacilities.length} st
+                </span>
+              )}
             </div>
             <button
               onClick={clearCompare}
@@ -174,8 +178,8 @@ export default function App() {
         <GrenSection />
         <ManuellSection />
         <LarmSection />
+        <CompareSection />
         <EventLogSection />
-        <NetworkSection />
       </main>
       <Footer />
     </div>

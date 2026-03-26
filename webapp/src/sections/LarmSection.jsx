@@ -23,7 +23,7 @@ export default function LarmSection() {
   const theme = getNivoTheme(dark)
   const l = state.larm
   const trend = state.trendanalys
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
   const cl = compareData?.larm
 
   if (!l) return <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}><EmptyState loading={state.isLoading} /></SectionWrapper>

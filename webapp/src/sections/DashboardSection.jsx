@@ -11,6 +11,7 @@ import KpiGrid from '../components/common/KpiGrid'
 import ChartCard from '../components/common/ChartCard'
 import EmptyState from '../components/common/EmptyState'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
+import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
@@ -23,7 +24,7 @@ export default function DashboardSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
 
-  const { energiDrift, ventiler, larm, trendanalys, compareMode, compareData, compareName } = state
+  const { energiDrift, ventiler, larm, trendanalys, compareMode, compareData, compareName, compareFacilities } = state
 
   if (!energiDrift) return <SectionWrapper id="dashboard" title="Överblick" icon={LayoutDashboard} info={SECTION_INFO.dashboard}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -46,10 +47,15 @@ export default function DashboardSection() {
   const availData = availPoints.length > 0 ? [{ id: state.facilityName || 'Tillgänglighet', data: availPoints }] : []
   const alarmData = larm?.monthlyTotals?.map(m => ({ month: m.month, Larm: m.total })) || []
 
-  // Add compare series to line chart
-  if (compareMode && cv?.monthlyAvailSummary) {
-    const cAvailPoints = cv.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
-    if (cAvailPoints.length > 0) availData.push({ id: compareName || 'Jämförelse', data: cAvailPoints })
+  // Add compare series to line chart (multi-facility)
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      const cfv = cf.data?.ventiler
+      if (cfv?.monthlyAvailSummary) {
+        const pts = cfv.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
+        if (pts.length > 0) availData.push({ id: cf.name || 'Jämförelse', data: pts })
+      }
+    }
   }
 
   return (
@@ -87,8 +93,8 @@ export default function DashboardSection() {
             <ResponsiveLine
               data={availData}
               theme={theme}
-              colors={compareMode && availData.length > 1 ? ['#22c55e', '#3b82f6'] : ['#22c55e']}
-              margin={{ top: 10, right: 10, bottom: 30, left: 50 }}
+              colors={compareMode && availData.length > 1 ? ['#22c55e', ...COMPARE_COLORS.slice(0, availData.length - 1)] : ['#22c55e']}
+              margin={{ top: 10, right: compareMode && availData.length > 1 ? 80 : 10, bottom: 30, left: 50 }}
               axisLeft={{ tickSize: 0, tickPadding: 5 }}
               axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
               pointSize={4}

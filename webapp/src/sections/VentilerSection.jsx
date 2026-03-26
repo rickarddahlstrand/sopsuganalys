@@ -14,6 +14,7 @@ import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import StatusBadge from '../components/common/StatusBadge'
+import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
@@ -25,7 +26,7 @@ export default function VentilerSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const v = state.ventiler
-  const { compareMode, compareData, compareName } = state
+  const { compareMode, compareData, compareName, compareFacilities } = state
   const cv = compareData?.ventiler
 
   const printMode = state.printMode
@@ -57,9 +58,14 @@ export default function VentilerSection() {
   const availPoints = v.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
   const availLine = [{ id: compareMode ? (state.facilityName || 'Medel') : 'Medel', data: availPoints }]
 
-  // Add compare availability line
-  if (compareMode && cv?.monthlyAvailSummary) {
-    availLine.push({ id: compareName || 'Jämförelse', data: cv.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean })) })
+  // Add compare availability lines (multi-facility)
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      const cfv = cf.data?.ventiler
+      if (cfv?.monthlyAvailSummary) {
+        availLine.push({ id: cf.name || 'Jämförelse', data: cfv.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean })) })
+      }
+    }
   }
   const availMin = availPoints.length > 0 ? Math.min(...availPoints.map(d => d.y)) : 0
 
@@ -136,7 +142,7 @@ export default function VentilerSection() {
           <ResponsiveLine
             data={availLine}
             theme={theme}
-            colors={compareMode && availLine.length > 1 ? ['#3b82f6', '#f97316'] : ['#3b82f6']}
+            colors={compareMode && availLine.length > 1 ? ['#3b82f6', ...COMPARE_COLORS.slice(0, availLine.length - 1)] : ['#3b82f6']}
             margin={{ top: 10, right: compareMode && availLine.length > 1 ? 90 : 10, bottom: 35, left: 55 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
