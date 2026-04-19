@@ -26,8 +26,13 @@ from common import (
 
 
 def collect_energy_data(report_files):
-    """Samlar månatlig energi och drifttid från Sheet3."""
-    rows = []
+    """Samlar månatlig energi och drifttid från Sheet3.
+
+    OBS: Varje rapport innehåller ackumulerade värden från årets start
+    (eller anläggningens start) fram till rapportdatumet. Vi räknar ut
+    månadsdelta genom att subtrahera föregående månads värde.
+    """
+    raw = []
     for month_num, month_name, filepath in report_files:
         df = read_sheet(filepath, "Sheet3", header_row=3)
         # Summera numeriska kolumner
@@ -37,9 +42,33 @@ def collect_energy_data(report_files):
         energy = pd.to_numeric(df[energy_col[0]], errors="coerce").sum() if energy_col else 0
         op_time = pd.to_numeric(df[time_col[0]], errors="coerce").sum() if time_col else 0
 
-        rows.append({
+        raw.append({
             "Månad_nr": month_num,
             "Månad": month_name,
+            "Energi_kWh_ack": float(energy) if pd.notna(energy) else 0.0,
+            "Drifttid_h_ack": float(op_time) if pd.notna(op_time) else 0.0,
+        })
+
+    # Sortera kronologiskt och beräkna delta mot föregående månad.
+    raw.sort(key=lambda r: r["Månad_nr"])
+    rows = []
+    for i, r in enumerate(raw):
+        if i == 0:
+            energy = r["Energi_kWh_ack"]
+            op_time = r["Drifttid_h_ack"]
+        else:
+            prev = raw[i - 1]
+            energy = r["Energi_kWh_ack"] - prev["Energi_kWh_ack"]
+            op_time = r["Drifttid_h_ack"] - prev["Drifttid_h_ack"]
+            # Skydd mot räknare-reset eller felaktig ordning
+            if energy < 0:
+                energy = r["Energi_kWh_ack"]
+            if op_time < 0:
+                op_time = r["Drifttid_h_ack"]
+
+        rows.append({
+            "Månad_nr": r["Månad_nr"],
+            "Månad": r["Månad"],
             "Energi_kWh": round(energy, 1),
             "Drifttid_h": round(op_time, 1),
         })
@@ -47,8 +76,13 @@ def collect_energy_data(report_files):
 
 
 def collect_fraction_data(report_files):
-    """Samlar tömningar per fraktion från Sheet5."""
-    rows = []
+    """Samlar tömningar per fraktion från Sheet5.
+
+    Värdena är ackumulerade från rapportperiodens start — vi räknar ut
+    månadsdelta per fraktion genom att subtrahera föregående månads värde.
+    """
+    import re
+    raw_by_month = {}
     for month_num, month_name, filepath in report_files:
         df = read_sheet(filepath, "Sheet5", header_row=3)
         frac_col = [c for c in df.columns if "fraction" in c.lower()]
@@ -57,24 +91,50 @@ def collect_fraction_data(report_files):
         if not frac_col or not empty_col:
             continue
 
+        per_frac = {}
         for _, row in df.iterrows():
             frac = str(row[frac_col[0]]).strip()
             if not frac or frac == "nan":
                 continue
+            # Filtrera bort historiska månad-rader (t.ex. "Month", "24-Feb")
+            if frac.lower() == "month" or re.match(r"^\d{2}-\w+$", frac):
+                continue
             emptyings = pd.to_numeric(row[empty_col[0]], errors="coerce")
-            if pd.notna(emptyings) and emptyings > 0:
+            if pd.notna(emptyings):
+                per_frac[frac] = float(emptyings)
+        raw_by_month[month_num] = (month_name, per_frac)
+
+    # Beräkna delta mot föregående månad per fraktion
+    sorted_months = sorted(raw_by_month.keys())
+    rows = []
+    prev_frac = {}
+    for i, m in enumerate(sorted_months):
+        name, cur_frac = raw_by_month[m]
+        for frac, cum in cur_frac.items():
+            if i == 0 or frac not in prev_frac:
+                delta = cum
+            else:
+                delta = cum - prev_frac[frac]
+                if delta < 0:
+                    delta = cum
+            if delta > 0:
                 rows.append({
-                    "Månad_nr": month_num,
-                    "Månad": month_name,
+                    "Månad_nr": m,
+                    "Månad": name,
                     "Fraktion": frac,
-                    "Tömningar": int(emptyings),
+                    "Tömningar": int(delta),
                 })
+        prev_frac = cur_frac
     return pd.DataFrame(rows)
 
 
 def collect_machine_data(report_files):
-    """Samlar maskinstatistik från Sheet7."""
-    rows = []
+    """Samlar maskinstatistik från Sheet7.
+
+    Värdena (Starter, Drifttimmar, kWh) är ackumulerade — vi räknar ut
+    månadsdelta per maskin genom att subtrahera föregående månads värde.
+    """
+    raw_by_month = {}
     for month_num, month_name, filepath in report_files:
         df = read_sheet(filepath, "Sheet7", header_row=4)
         name_col = [c for c in df.columns if "name" in c.lower()]
@@ -85,20 +145,51 @@ def collect_machine_data(report_files):
         if not name_col:
             continue
 
+        per_machine = {}
         for _, row in df.iterrows():
             name = str(row[name_col[0]]).strip()
             if not name or name == "nan":
                 continue
             if name.lower() == "total":
                 continue
+            per_machine[name] = {
+                "starter": pd.to_numeric(row[starts_col[0]], errors="coerce") if starts_col else 0,
+                "timmar": pd.to_numeric(row[hours_col[0]], errors="coerce") if hours_col else 0,
+                "kwh": pd.to_numeric(row[kwh_col[0]], errors="coerce") if kwh_col else 0,
+            }
+        raw_by_month[month_num] = (month_name, per_machine)
+
+    sorted_months = sorted(raw_by_month.keys())
+    rows = []
+    prev_machine = {}
+    for i, m in enumerate(sorted_months):
+        name_m, cur_mach = raw_by_month[m]
+        for mname, vals in cur_mach.items():
+            if i == 0 or mname not in prev_machine:
+                delta_starts = vals["starter"]
+                delta_hours = vals["timmar"]
+                delta_kwh = vals["kwh"]
+            else:
+                p = prev_machine[mname]
+                delta_starts = vals["starter"] - p["starter"] if pd.notna(vals["starter"]) and pd.notna(p["starter"]) else vals["starter"]
+                delta_hours = vals["timmar"] - p["timmar"] if pd.notna(vals["timmar"]) and pd.notna(p["timmar"]) else vals["timmar"]
+                delta_kwh = vals["kwh"] - p["kwh"] if pd.notna(vals["kwh"]) and pd.notna(p["kwh"]) else vals["kwh"]
+                # Skydd mot räknare-reset
+                if pd.notna(delta_starts) and delta_starts < 0:
+                    delta_starts = vals["starter"]
+                if pd.notna(delta_hours) and delta_hours < 0:
+                    delta_hours = vals["timmar"]
+                if pd.notna(delta_kwh) and delta_kwh < 0:
+                    delta_kwh = vals["kwh"]
             rows.append({
-                "Månad_nr": month_num,
-                "Månad": month_name,
-                "Maskin": name,
-                "Starter": pd.to_numeric(row[starts_col[0]], errors="coerce") if starts_col else 0,
-                "Drifttimmar": pd.to_numeric(row[hours_col[0]], errors="coerce") if hours_col else 0,
-                "kWh": pd.to_numeric(row[kwh_col[0]], errors="coerce") if kwh_col else 0,
+                "Månad_nr": m,
+                "Månad": name_m,
+                "Maskin": mname,
+                "Starter": delta_starts,
+                "Drifttimmar": delta_hours,
+                "kWh": delta_kwh,
             })
+        prev_machine = cur_mach
     return pd.DataFrame(rows)
 
 

@@ -12,6 +12,7 @@ import SammanfattningSection from './sections/SammanfattningSection'
 import EnergiSection from './sections/EnergiSection'
 import FraktionSection from './sections/FraktionSection'
 import VentilerSection from './sections/VentilerSection'
+import NivagivareSection from './sections/NivagivareSection'
 import GrenSection from './sections/GrenSection'
 import ManuellSection from './sections/ManuellSection'
 import LarmSection from './sections/LarmSection'
@@ -30,6 +31,7 @@ const baseSections = [
   { id: 'energi', label: 'Energi' },
   { id: 'fraktioner', label: 'Fraktioner' },
   { id: 'ventiler', label: 'Ventiler' },
+  { id: 'nivagivare', label: 'Nivågivare' },
   { id: 'grenar', label: 'Grenar' },
   { id: 'manuell', label: 'Manuell' },
   { id: 'larm', label: 'Larm' },
@@ -175,6 +177,7 @@ export default function App() {
         <EnergiSection />
         <FraktionSection />
         <VentilerSection />
+        <NivagivareSection />
         <GrenSection />
         <ManuellSection />
         <LarmSection />

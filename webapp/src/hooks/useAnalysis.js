@@ -10,6 +10,7 @@ import { analyzeManuell } from '../analysis/manuellAnalys'
 import { analyzeTrender } from '../analysis/trendanalys'
 import { generateRekommendationer } from '../analysis/rekommendationer'
 import { analyzeDrifterfarenheter } from '../analysis/drifterfarenheter'
+import { analyzeNivagivare } from '../analysis/nivagivare'
 
 /**
  * Orchestrates the analysis pipeline progressively.
@@ -41,10 +42,15 @@ export function useAnalysis() {
         const ventilerResult = analyzeVentiler(files)
         dispatch({ type: 'SET_ANALYSIS', key: 'ventiler', payload: ventilerResult })
 
-        dispatch({ type: 'SET_PROGRESS', payload: { progress: 30, label: 'Analyserar larm...' } })
+        dispatch({ type: 'SET_PROGRESS', payload: { progress: 28, label: 'Analyserar larm...' } })
         await tick()
         const larmResult = analyzeLarm(files)
         dispatch({ type: 'SET_ANALYSIS', key: 'larm', payload: larmResult })
+
+        dispatch({ type: 'SET_PROGRESS', payload: { progress: 34, label: 'Analyserar nivågivare...' } })
+        await tick()
+        const nivagivareResult = analyzeNivagivare(files)
+        dispatch({ type: 'SET_ANALYSIS', key: 'nivagivare', payload: nivagivareResult })
 
         // Phase B: Extended analysis (independent)
         dispatch({ type: 'SET_PROGRESS', payload: { progress: 40, label: 'Analyserar sammanfattning...' } })

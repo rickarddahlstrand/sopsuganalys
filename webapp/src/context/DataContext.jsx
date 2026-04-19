@@ -15,6 +15,7 @@ const initialState = {
   trendanalys: null,
   rekommendationer: null,
   drifterfarenheter: null,
+  nivagivare: null,
   eventLog: null,
   eventLogFiles: null,
   originalXlsFiles: null,
@@ -105,6 +106,7 @@ function reducer(state, action) {
         trendanalys: d.trendanalys ?? null,
         rekommendationer: d.rekommendationer ?? null,
         drifterfarenheter: d.drifterfarenheter ?? null,
+        nivagivare: d.nivagivare ?? null,
         parsedFiles: [], // empty array so hasData triggers
         fromNetwork: true,
         isLoading: false,

@@ -11,6 +11,7 @@ const ANALYSIS_KEYS = [
   'trendanalys',
   'rekommendationer',
   'drifterfarenheter',
+  'nivagivare',
 ]
 
 export function computeSummaryKpi(state) {

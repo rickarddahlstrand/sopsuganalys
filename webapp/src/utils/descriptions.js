@@ -104,6 +104,24 @@ export const SECTION_INFO = {
     'Fokusera på ventiler med flera feltyper samtidigt — det tyder på systematiskt problem. ' +
     'En ventil som gradvis försämras bör bytas innan den orsakar driftstopp.',
 
+  nivagivare:
+    'Nivågivaranalysen identifierar ventiler vars nivågivare misstänks vara trasig eller felaktig. ' +
+    'Givaren sitter i lagringsenheten vid inkastpunkten och triggar automatisk tömning när kärlet är fullt. ' +
+    'När givaren inte fungerar blir ventilen "tyst" — den rapporterar aldrig full och automatisk tömning sker aldrig. ' +
+    'Driften sker då manuellt, eller avfallet ackumuleras tills någon reagerar.' +
+    '\n\n' +
+    'Så tolkar du nivågivaranalysen:\n' +
+    'Sektionen delar in misstänkta givare i flera kategorier som stöd för driftmöten:\n' +
+    '• Tysta givare — AUTO_OPEN_CMD = 0 hela perioden. Ingen automatisk triggning har skett.\n' +
+    '• Höga nivåer — LEVEL_ERROR och LONG_TIME_SINCE_LAST_COLLECTION tyder på att kärlet är fullt men inte töms.\n' +
+    '• Låga nivåer / falska triggers — onaturligt många AUTO_OPEN_CMD i enskild månad jämfört med normalt mönster.\n' +
+    '• Fastnat värde — exakt samma AUTO_OPEN_CMD-antal i 3+ månader (statistiskt osannolikt).\n' +
+    '• Saknad rapportering — ventilen rapporterar availability vissa månader men inte andra.\n' +
+    '\n' +
+    'Misstankepoängen är en sammanvägd indikator: ≥50 kritiskt, 20–49 varning, 1–19 informativt. ' +
+    'Börja med ventilerna som har högst poäng och hög manuell andel — där kompenserar ' +
+    'driften aktivt för en trasig givare.',
+
   grenar:
     'Grenanalysen aggregerar ventildata per gren (rörledningssegment i kvartersnätet). ' +
     'Hälsopoängen är ett sammanvägt mått (0–100): ' +
@@ -344,6 +362,26 @@ export const KPI_INFO = {
     'Indikerar om energiförbrukningen har ett tydligt säsongsmönster. ' +
     'Säsongsmönster är normalt för anläggningar med skolgrenar eller stora temperaturvariationer.',
 
+  'Ventiler med givare':
+    'Antal unika ventiler som rapporterat någon form av data under perioden. ' +
+    'Varje ventil har en egen nivågivare i lagringsenheten vid inkastpunkten.',
+
+  'Tysta givare':
+    'Ventiler som inte haft en enda automatisk öppning (AUTO_OPEN_CMD = 0) under hela perioden. ' +
+    'Om ventilen samtidigt har manuella kommandon är det en stark indikation på att givaren är trasig.',
+
+  'Andel tysta givare':
+    'Andel av alla ventiler som är "tysta" (rapporterar aldrig full). ' +
+    'Över 10 % är hög och bör utredas — det kan tyda på systematiska givarproblem.',
+
+  'Misstänkta givare':
+    'Antal ventiler med minst en indikator på givarproblem: nivåfel, tyst givare, ' +
+    'fastnat värde, saknad rapportering eller misstänkta höga/låga nivåer.',
+
+  'Totala nivåfel':
+    'Summerat antal LEVEL_ERROR-händelser under perioden. ' +
+    'Ett nivåfel betyder att styrsystemet inte kunnat tolka givarens värde korrekt.',
+
   'eventlog_total':
     'Totalt antal registrerade händelser i loggfilen under den valda perioden. ' +
     'Inkluderar alla händelsetyper: sekvenser, larm, statusmeddelanden och felkoder.',
@@ -440,6 +478,25 @@ export const TABLE_INFO = {
     'Aggregerad larmstatistik under perioden. ' +
     'Januari-faktorn visar hur mycket januari avviker från övriga månader (normalt 1.5–2.5x). ' +
     'Anomalier pekar ut månader med extremt larmantal.',
+
+  'Misstänkta givare':
+    'Ventiler med en eller flera indikatorer på trasig nivågivare, sorterade efter sammanvägd misstankepoäng. ' +
+    'Poängen kombinerar nivåfel, tyst givare, manuell kompensation, saknad rapportering och fastnat värde. ' +
+    'Hög manuell andel + tyst givare är en tydlig "dold risk" där driften kompenserar för ett automatikproblem.',
+
+  'Tysta givare':
+    'Ventiler som inte haft en enda automatisk öppning under perioden. ' +
+    'Om ventilen samtidigt har många manuella kommandon är givaren med stor sannolikhet trasig. ' +
+    'Ventiler utan vare sig auto- eller manuella kommandon kan också vara helt oanvända — ' +
+    'kontrollera Info-fältet för kontext.',
+
+  'Höga nivåer':
+    'Ventiler där LEVEL_ERROR eller LONG_TIME_SINCE_LAST_COLLECTION antyder att kärlet är fullt men inte töms. ' +
+    'Kan bero på att givaren rapporterar full permanent (stuck high) eller att ventilen inte kan öppnas trots fullt kärl.',
+
+  'Låga nivåer':
+    'Ventiler vars antal AUTO_OPEN_CMD har extrema toppar (>3× median) en enskild månad. ' +
+    'Kan bero på att givaren triggar falska "fulla" signaler, vilket orsakar onödiga tömningscykler.',
 
   'Operatörsagenda':
     'Anläggningens nyckeltal som stöd för operatörsagendans prioriteringar. ' +
@@ -601,6 +658,30 @@ export const CHART_INFO = {
     'sopventilens mekanik (cylinder, ventilhus, packningar) behöver reparation eller byte. ' +
     'Ventiler med plötsligt tapp har fått ett nytt problem. ' +
     'Ventiler vars kurva svänger uppåt har förbättrats — kontrollera om en reparation gjordes.',
+
+  'Nivåfel per månad':
+    'Summa av LEVEL_ERROR-händelser per månad för alla ventiler. ' +
+    'Spikar bör korrelera med kända problem eller förändringar.' +
+    '\n\n' +
+    'Ett stabilt eller sjunkande antal är positivt. ' +
+    'Om nivåfelen koncentreras till enstaka månader kan det peka på en specifik incident ' +
+    '(t.ex. sensorbyte som skapade kortvariga problem). ' +
+    'Återkommande spikar på samma ventiler tyder på kronisk givarproblematik.',
+
+  'Tysta givare vs nivåfel per månad':
+    'Jämför antal tysta givare och antal nivåfel per månad.' +
+    '\n\n' +
+    'Tysta givare = ventiler utan automatiska öppningar, vilket ' +
+    'kan bero på trasig givare eller att ventilen inte används. ' +
+    'Nivåfel = styrsystemet har rapporterat fel från givaren. ' +
+    'När båda värden stiger samtidigt pekar det på försämring i givarbeståndet.',
+
+  'Misstänkta givare per gren':
+    'Antal ventiler per gren vars givare misstänks vara trasig.' +
+    '\n\n' +
+    'Om en gren har många misstänkta givare kan problemet vara systematiskt — ' +
+    't.ex. samma sensortyp eller en leverans som haft kvalitetsproblem. ' +
+    'Jämför med grenens hälsopoäng i grenanalysen för att avgöra om hela grenen bör inspekteras.',
 
   'Tillgänglighetsfördelning (histogram)':
     'Visar att de flesta ventiler har hög tillgänglighet. Fokusera på svansen till vänster.' +

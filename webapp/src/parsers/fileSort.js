@@ -274,9 +274,115 @@ export function sortFilesByMonth(parsedFiles) {
     f.month = f.monthName
   }
 
+  // Convert cumulative sheet values to per-month deltas.
+  // Each .xls report contains totals from the report period start (e.g. year start
+  // or facility start) to the report date — so Feb's value = Jan+Feb cumulative.
+  // We convert by subtracting the previous month's value for the same facility.
+  deltafyCumulativeSheets(extracted)
+
   // Return both the files and metadata
   return {
     files: extracted,
     facilityName,
   }
+}
+
+/**
+ * Convert cumulative period-to-date values into per-month deltas.
+ *
+ * Operates in-place on the already-sorted list of files. For each consecutive
+ * pair (previous → current) we subtract the previous cumulative value from
+ * the current one, yielding a single-month figure. Year boundaries reset
+ * (Jan of a new year is assumed to already be a single-month value).
+ *
+ * Sheets affected:
+ *   - sheet3: totalEnergy, totalTime (single scalar per file)
+ *   - sheet5: kWh, emptyings per fraction (per-fraction deltas)
+ *   - sheet7: starts, hours, kWh per machine (per-machine deltas)
+ *
+ * Sheets NOT affected (non-cumulative or period-based metrics):
+ *   - sheet1: KPI key/value pairs (many already monthly or state snapshots)
+ *   - sheet5 hours, emptyingPerMinute (rate/time, treated like availability)
+ *   - sheet9, sheet11: valve commands and availability (handled upstream)
+ *   - sheet13: alarm category current period (already per-period)
+ */
+function deltafyCumulativeSheets(files) {
+  if (!files.length) return
+
+  // Group files by year so the "previous" month only comes from same year.
+  const byYear = {}
+  for (const f of files) {
+    if (!byYear[f.year]) byYear[f.year] = []
+    byYear[f.year].push(f)
+  }
+
+  for (const year of Object.keys(byYear)) {
+    const yearFiles = byYear[year].sort((a, b) => a.sortKey - b.sortKey)
+
+    for (let i = yearFiles.length - 1; i > 0; i--) {
+      const cur = yearFiles[i]
+      const prev = yearFiles[i - 1]
+
+      // --- Sheet3: scalar totals ---
+      const cs3 = cur.sheets.sheet3
+      const ps3 = prev.sheets.sheet3
+      if (cs3 && ps3) {
+        cur.sheets.sheet3 = {
+          ...cs3,
+          totalEnergy: deltaValue(cs3.totalEnergy, ps3.totalEnergy),
+          totalTime: deltaValue(cs3.totalTime, ps3.totalTime),
+        }
+      }
+
+      // --- Sheet5: per-fraction rows (cumulative kWh, emptyings) ---
+      // Match rows by fraction name across months.
+      const prev5ByFrac = {}
+      for (const r of prev.sheets.sheet5 || []) {
+        prev5ByFrac[r.fraction] = r
+      }
+      cur.sheets.sheet5 = (cur.sheets.sheet5 || []).map(r => {
+        const p = prev5ByFrac[r.fraction]
+        if (!p) return r
+        return {
+          ...r,
+          kWh: deltaValue(r.kWh, p.kWh),
+          emptyings: deltaValue(r.emptyings, p.emptyings),
+          // hours (fyllnadstid) and emptyingPerMinute are rate/time metrics —
+          // leave as-is. They represent the report-period state, not accrued counts.
+        }
+      })
+
+      // --- Sheet7: per-machine rows (cumulative starts, hours, kWh) ---
+      const prev7ByName = {}
+      for (const r of prev.sheets.sheet7 || []) {
+        prev7ByName[r.name] = r
+      }
+      cur.sheets.sheet7 = (cur.sheets.sheet7 || []).map(r => {
+        const p = prev7ByName[r.name]
+        if (!p) return r
+        return {
+          ...r,
+          starts: deltaValue(r.starts, p.starts),
+          hours: deltaValue(r.hours, p.hours),
+          kWh: deltaValue(r.kWh, p.kWh),
+        }
+      })
+    }
+  }
+}
+
+/**
+ * Compute delta cur - prev with guards:
+ *  - If either is null/undefined → return cur unchanged
+ *  - If prev > cur (counter reset or we guessed wrong) → return cur
+ *    (treat as already single-month — safer than producing a negative)
+ */
+function deltaValue(cur, prev) {
+  if (cur == null) return cur
+  if (prev == null) return cur
+  const c = Number(cur)
+  const p = Number(prev)
+  if (isNaN(c) || isNaN(p)) return cur
+  if (p > c) return cur
+  return c - p
 }
