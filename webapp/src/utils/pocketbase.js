@@ -12,35 +12,7 @@ export function getPb() {
   return pb
 }
 
-// --- Legacy shared_analyses (kept for backwards compatibility) ---
-
-const COLLECTION = 'shared_analyses'
-
-const LIST_FIELDS =
-  'id,created,facility_name,schema_version,date_range_start,date_range_end,file_count,summary_kpi'
-
-export async function uploadAnalysis(payload) {
-  const client = getPb()
-  if (!client) throw new Error('PocketBase är inte konfigurerad')
-  return client.collection(COLLECTION).create(payload)
-}
-
-export async function listAnalyses({ page = 1, perPage = 12, sort = '-created' } = {}) {
-  const client = getPb()
-  if (!client) throw new Error('PocketBase är inte konfigurerad')
-  return client.collection(COLLECTION).getList(page, perPage, {
-    sort,
-    fields: LIST_FIELDS,
-  })
-}
-
-export async function getAnalysis(id) {
-  const client = getPb()
-  if (!client) throw new Error('PocketBase är inte konfigurerad')
-  return client.collection(COLLECTION).getOne(id)
-}
-
-// --- New facility_uploads collection ---
+// --- facility_uploads collection (original files + summary KPI) ---
 
 const FACILITY_COLLECTION = 'facility_uploads'
 
@@ -87,7 +59,7 @@ export async function getFacilityFiles(record) {
   const client = getPb()
   if (!client) throw new Error('PocketBase är inte konfigurerad')
 
-  const downloadFiles = async (filenames, fieldName) => {
+  const downloadFiles = async (filenames) => {
     if (!filenames?.length) return []
     const results = []
     for (const filename of filenames) {
@@ -101,8 +73,8 @@ export async function getFacilityFiles(record) {
   }
 
   const [xlsFiles, csvFiles] = await Promise.all([
-    downloadFiles(record.xls_files, 'xls_files'),
-    downloadFiles(record.csv_files, 'csv_files'),
+    downloadFiles(record.xls_files),
+    downloadFiles(record.csv_files),
   ])
 
   return { xlsFiles, csvFiles }

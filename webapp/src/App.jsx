@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Info, X, BarChart3 } from 'lucide-react'
@@ -47,19 +47,31 @@ function getSections(hasEventLog) {
 function InfoHint() {
   const [visible, setVisible] = useState(false)
   const [pos, setPos] = useState(null)
-  const btnRef = useRef(null)
 
   useEffect(() => {
     let raf
     let btn
+    let mouseEnterHandler
+    let autoHide
+    let stopped = false
+
+    const stop = () => {
+      if (stopped) return
+      stopped = true
+      if (raf) cancelAnimationFrame(raf)
+      if (autoHide) clearTimeout(autoHide)
+      if (btn && mouseEnterHandler) btn.removeEventListener('mouseenter', mouseEnterHandler)
+    }
 
     const track = () => {
+      if (stopped) return
       if (!btn) {
         btn = document.querySelector('[aria-label="Mer information"]')
         if (!btn) { raf = requestAnimationFrame(track); return }
-        btnRef.current = btn
         setVisible(true)
-        btn.addEventListener('mouseenter', () => setVisible(false))
+        mouseEnterHandler = () => { setVisible(false); stop() }
+        btn.addEventListener('mouseenter', mouseEnterHandler)
+        autoHide = setTimeout(() => { setVisible(false); stop() }, 8000)
       }
       const rect = btn.getBoundingClientRect()
       setPos({ top: rect.top + rect.height / 2, left: rect.right + 10 })
@@ -70,7 +82,7 @@ function InfoHint() {
 
     return () => {
       clearTimeout(startDelay)
-      if (raf) cancelAnimationFrame(raf)
+      stop()
     }
   }, [])
 

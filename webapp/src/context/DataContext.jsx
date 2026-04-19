@@ -107,6 +107,7 @@ function reducer(state, action) {
         rekommendationer: d.rekommendationer ?? null,
         drifterfarenheter: d.drifterfarenheter ?? null,
         nivagivare: d.nivagivare ?? null,
+        eventLog: d.eventLog ?? null,
         parsedFiles: [], // empty array so hasData triggers
         fromNetwork: true,
         isLoading: false,

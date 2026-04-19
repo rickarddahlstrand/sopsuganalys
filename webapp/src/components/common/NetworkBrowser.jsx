@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Globe, Loader2, AlertCircle, ArrowLeft, ArrowRight, Download } from 'lucide-react'
 import { useData } from '../../context/DataContext'
-import { listAnalyses, getAnalysis, getPb } from '../../utils/pocketbase'
-import { deserializeAnalysis } from '../../utils/serialize'
+import { listFacilities, getPb } from '../../utils/pocketbase'
+import { loadFacilityAnalysis } from '../../utils/loadFacility'
 import { fmt, pct } from '../../utils/formatters'
 
 export default function NetworkBrowser() {
@@ -24,7 +24,7 @@ export default function NetworkBrowser() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    listAnalyses({ page, perPage: 9 })
+    listFacilities({ page, perPage: 9 })
       .then(result => {
         if (!cancelled) setData(result)
       })
@@ -40,8 +40,7 @@ export default function NetworkBrowser() {
   const handleLoad = async (id) => {
     setLoadingId(id)
     try {
-      const record = await getAnalysis(id)
-      const parsed = deserializeAnalysis(record)
+      const parsed = await loadFacilityAnalysis(id)
       dispatch({ type: 'LOAD_FROM_NETWORK', payload: parsed })
     } catch (err) {
       console.error('Failed to load from network:', err)
@@ -90,7 +89,7 @@ export default function NetworkBrowser() {
         <div className="text-center py-10">
           <Globe className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Inga delade analyser ännu.
+            Inga delade anläggningar ännu.
           </p>
         </div>
       )}

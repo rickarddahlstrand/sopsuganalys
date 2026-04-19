@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { GitCompare, Loader2, AlertCircle, CheckSquare, Square, ArrowLeft, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { listAnalyses, getAnalysis, getPb } from '../utils/pocketbase'
-import { deserializeAnalysis } from '../utils/serialize'
+import { listFacilities, getPb } from '../utils/pocketbase'
+import { loadFacilityAnalysis } from '../utils/loadFacility'
 import { fmt, pct } from '../utils/formatters'
 import SectionWrapper from '../components/common/SectionWrapper'
 
@@ -29,7 +29,7 @@ export default function CompareSection() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    listAnalyses({ page, perPage: 12 })
+    listFacilities({ page, perPage: 12 })
       .then(result => {
         if (!cancelled) setData(result)
       })
@@ -52,8 +52,7 @@ export default function CompareSection() {
 
     setLoadingIds(prev => new Set([...prev, id]))
     try {
-      const record = await getAnalysis(id)
-      const parsed = deserializeAnalysis(record)
+      const parsed = await loadFacilityAnalysis(id)
       dispatch({
         type: 'ADD_COMPARE_FACILITY',
         payload: { id, name: parsed.facilityName, data: parsed },
@@ -156,10 +155,10 @@ export default function CompareSection() {
         <div className="text-center py-12">
           <GitCompare className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-slate-500 dark:text-slate-400">
-            Inga delade analyser ännu.
+            Inga delade anläggningar ännu.
           </p>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-            Dela analyser via nätverket för att kunna jämföra anläggningar.
+            Ladda upp anläggningar till databasen för att kunna jämföra.
           </p>
         </div>
       )}

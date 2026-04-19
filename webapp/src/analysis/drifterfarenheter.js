@@ -4,6 +4,7 @@
  */
 
 import { pearsonCorrelation } from '../stats/correlation'
+import { halfPeriodCut } from '../utils/halfPeriod'
 
 const ERROR_TYPES = [
   'DOES_NOT_CLOSE', 'DOES_NOT_OPEN', 'LEVEL_ERROR',
@@ -106,9 +107,10 @@ function analyzeEnergyEfficiency(trendanalys) {
   const worstIdx = kwhPerE.indexOf(Math.max(...kwhPerE))
   const spread = ((Math.max(...kwhPerE) - Math.min(...kwhPerE)) / avg(kwhPerE)) * 100
 
-  // H1/H2 based on month-of-year, not positional slicing
-  const h1Vals = fd.filter(d => d.monthNum <= 6).map(d => d.kwhPerEmptying)
-  const h2Vals = fd.filter(d => d.monthNum > 6).map(d => d.kwhPerEmptying)
+  // H1/H2: first half vs second half of uploaded period (chronological sortKey).
+  const cut = halfPeriodCut(fd.map(d => d.sortKey))
+  const h1Vals = cut != null ? fd.filter(d => d.sortKey < cut).map(d => d.kwhPerEmptying) : fd.map(d => d.kwhPerEmptying)
+  const h2Vals = cut != null ? fd.filter(d => d.sortKey >= cut).map(d => d.kwhPerEmptying) : []
   const h1 = avg(h1Vals)
   const h2 = avg(h2Vals)
   const hChange = h1 > 0 ? ((h2 - h1) / h1) * 100 : 0
@@ -133,8 +135,9 @@ function analyzeManualTrend(manuellAnalys) {
   if (!manuellAnalys?.monthly?.length) return {}
 
   const m = manuellAnalys.monthly
-  const h1 = avg(m.filter(r => r.monthNum <= 6).map(r => r.manualPct))
-  const h2 = avg(m.filter(r => r.monthNum > 6).map(r => r.manualPct))
+  const cut = halfPeriodCut(m.map(r => r.sortKey))
+  const h1 = cut != null ? avg(m.filter(r => r.sortKey < cut).map(r => r.manualPct)) : avg(m.map(r => r.manualPct))
+  const h2 = cut != null ? avg(m.filter(r => r.sortKey >= cut).map(r => r.manualPct)) : 0
   const worst = m.reduce((w, r) => r.manualPct > w.manualPct ? r : w, m[0])
 
   return {

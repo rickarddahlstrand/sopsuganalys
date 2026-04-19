@@ -88,9 +88,9 @@ export function analyzeVentiler(parsedFiles) {
       monthNum: m.monthNum,
       sortKey: m.sortKey,
       month: m.month,
-      mean: round2(avg(m.vals)),
-      min: round2(Math.min(...m.vals)),
-      max: round2(Math.max(...m.vals)),
+      mean: m.vals.length ? round2(avg(m.vals)) : null,
+      min: m.vals.length ? round2(Math.min(...m.vals)) : null,
+      max: m.vals.length ? round2(Math.max(...m.vals)) : null,
     }))
     .sort((a, b) => a.sortKey - b.sortKey)
 

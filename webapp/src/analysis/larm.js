@@ -3,6 +3,8 @@
  * Source: Sheet13 (alarm categories per month)
  */
 
+import { splitByHalfPeriod } from '../utils/halfPeriod'
+
 export function analyzeLarm(parsedFiles) {
   const alarms = []
 
@@ -51,9 +53,8 @@ export function analyzeLarm(parsedFiles) {
   // Total alarms
   const totalAlarms = alarms.reduce((s, a) => s + a.currentPeriod, 0)
 
-  // H1 vs H2
-  const h1 = monthlyTotals.filter(m => m.monthNum <= 6)
-  const h2 = monthlyTotals.filter(m => m.monthNum > 6)
+  // H1 vs H2 — first half vs second half of uploaded period (chronological, not calendar).
+  const { h1, h2 } = splitByHalfPeriod(monthlyTotals)
   const h1Avg = h1.length > 0 ? h1.reduce((s, m) => s + m.total, 0) / h1.length : 0
   const h2Avg = h2.length > 0 ? h2.reduce((s, m) => s + m.total, 0) / h2.length : 0
 

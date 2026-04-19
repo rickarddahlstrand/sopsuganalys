@@ -3,6 +3,8 @@
  * Source: Sheet5 — all columns per fraction per month
  */
 
+import { splitByHalfPeriod } from '../utils/halfPeriod'
+
 export function analyzeFraktioner(parsedFiles) {
   const rows = []
 
@@ -33,8 +35,9 @@ export function analyzeFraktioner(parsedFiles) {
   const seasonal = {}
   for (const frac of fractions) {
     const fracRows = rows.filter(r => r.fraction === frac)
-    const h1 = fracRows.filter(r => r.monthNum <= 6)
-    const h2 = fracRows.filter(r => r.monthNum > 6)
+    // H1/H2 uses chronological sortKey so multi-year data isn't split by calendar half.
+    // Summer/winter remain calendar-based — they're physical seasons.
+    const { h1, h2 } = splitByHalfPeriod(fracRows)
     const summer = fracRows.filter(r => [6, 7, 8].includes(r.monthNum))
     const winter = fracRows.filter(r => [12, 1, 2].includes(r.monthNum))
 
@@ -56,18 +59,17 @@ export function analyzeFraktioner(parsedFiles) {
   // Fill analysis
   const fillAnalysis = {}
   for (const frac of fractions) {
-    const fracRows = rows.filter(r => r.fraction === frac)
-    const hours = fracRows.map(r => r.hoursHighFill).filter(h => h != null)
-    if (hours.length === 0) continue
+    const filled = rows.filter(r => r.fraction === frac && r.hoursHighFill != null)
+    if (filled.length === 0) continue
 
-    const maxIdx = hours.indexOf(Math.max(...hours))
-    const maxRow = fracRows.filter(r => r.hoursHighFill != null)[maxIdx]
+    const hours = filled.map(r => r.hoursHighFill)
+    const maxRow = filled.reduce((best, r) => r.hoursHighFill > best.hoursHighFill ? r : best, filled[0])
 
     fillAnalysis[frac] = {
       mean: Math.round(avg(hours) * 100) / 100,
       max: Math.round(Math.max(...hours) * 100) / 100,
       min: Math.round(Math.min(...hours) * 100) / 100,
-      topMonth: maxRow ? maxRow.month : '?',
+      topMonth: maxRow.month,
     }
   }
 
