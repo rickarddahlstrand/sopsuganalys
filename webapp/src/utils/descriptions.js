@@ -501,6 +501,37 @@ export const TABLE_INFO = {
   'Operatörsagenda':
     'Anläggningens nyckeltal som stöd för operatörsagendans prioriteringar. ' +
     'Akuta åtgärder kräver omedelbar insats, planerade förbättringar kan schemaläggas inom 1–3 månader.',
+
+  'Stigande manuell-trend':
+    'Ventiler vars manuella andel ökar stadigt under perioden. ' +
+    'Lutning beräknas med linjär regression på månatlig manuell% — en stigande lutning betyder ' +
+    'att automatiken successivt fungerar sämre. ' +
+    'Prioritera ventiler med hög slope OCH låg p-värde — dessa är statistiskt säkrade trender, ' +
+    'inte slumpmässig variation. ' +
+    'Åtgärda dessa innan operatörsbördan växer sig kritisk.',
+
+  'Manuell-spikar per månad':
+    'Månader där manuell andel avviker mer än 1 standardavvikelse från periodens medelvärde. ' +
+    'Positiva avvikelser (typ "hög") visar oväntade toppar som kan bero på incidenter, ' +
+    'underhåll, eller tillfälliga driftstörningar. ' +
+    'Jämför med larm- och felmönster för samma månad — finns det samtidiga händelser är ' +
+    'orsakssambandet troligt. ' +
+    'z-score >2 är ovanligt högt.',
+
+  'Korrelation manuell vs larmkategorier':
+    'Pearson-korrelation (r) mellan månatlig manuell andel och antal larm per kategori per månad. ' +
+    '|r|>0.7 är starkt samband, 0.4–0.7 måttligt, <0.4 svagt. ' +
+    'p<0.05 = statistiskt signifikant. ' +
+    'En stark positiv korrelation betyder att kategorin ökar parallellt med manuellt arbete — ' +
+    'larmen kan vara antingen orsak eller konsekvens av manuella ingrepp. ' +
+    'Kategorier med hög r + låg p pekar ut vilka larmtyper operatörerna bör prioritera ' +
+    'när de vill minska manuella körningar.',
+
+  'Manuell säsongsanalys':
+    'Jämför manuell andel under sommarmånaderna (juni–augusti) mot vintermånaderna (december–februari). ' +
+    'En signifikant skillnad kan motivera säsongsanpassad drift — t.ex. att underhållsintervallen ' +
+    'justeras, eller att extra bevakning sätts in under aktiva perioder. ' +
+    'Signifikans bedöms med en enkel Welch-approximation (|t|>2) och kräver minst 2 månader per säsong.',
 }
 
 // ---- Chart-level descriptions ----
@@ -683,6 +714,33 @@ export const CHART_INFO = {
     't.ex. samma sensortyp eller en leverans som haft kvalitetsproblem. ' +
     'Jämför med grenens hälsopoäng i grenanalysen för att avgöra om hela grenen bör inspekteras.',
 
+  'Ej tömt länge per månad (per fraktion)':
+    'Månadsvis summa av LONG_TIME_SINCE_LAST_COLLECTION från Sheet11, ' +
+    'stackat per avfallsfraktion. Endast ventiler som har minst en notering ' +
+    'under hela perioden ingår — ventiler som aldrig drabbats exkluderas för att ' +
+    'minska bakgrundsbrus.' +
+    '\n\n' +
+    'Stigande staplar för en viss fraktion tyder på att kärlen för den fraktionen ' +
+    'inte töms tillräckligt ofta, antingen p.g.a. ändrad volym eller ett ' +
+    'sensor-/logistikproblem. Jämna staplar över tid är normalt säsongsmönster.',
+
+  'Höga nivåer per månad':
+    'Antal rapporterade "HIGH_LEVEL"-händelser per månad från Sheet9. Bara ' +
+    'ventiler som har minst en notering under hela perioden räknas — ventiler ' +
+    'utan noteringar utelämnas helt.' +
+    '\n\n' +
+    'Höga nivåer uppstår när nivågivaren rapporterat full utan att automatisk ' +
+    'tömning har följt. Kombinera med "Ej tömt länge"-grafen för att se om det är ' +
+    'samma ventiler som även saknar tömning.',
+
+  'Låga nivåer per månad':
+    'Antal rapporterade "LOW_LEVEL"-händelser per månad från Sheet9. Bara ' +
+    'ventiler som har minst en notering under hela perioden räknas.' +
+    '\n\n' +
+    'Låga nivåer kan betyda att givaren triggat onödiga tömningscykler (falska ' +
+    'fulltrigger). Ihållande höga värden över flera månader bör leda till ' +
+    'kontroll av givarinställning eller mekanisk placering.',
+
   'Tillgänglighetsfördelning (histogram)':
     'Visar att de flesta ventiler har hög tillgänglighet. Fokusera på svansen till vänster.' +
     '\n\n' +
@@ -760,6 +818,18 @@ export const CHART_INFO = {
     'En sjunkande trend indikerar att underhåll ger effekt. ' +
     'En stigande trend kräver åtgärd innan operatörerna blir överbelastade.',
 
+  'Manuell andel per fraktion per månad (%)':
+    'En linje per avfallsfraktion — avslöjar om specifika fraktioner driver upp manuell andel.' +
+    '\n\n' +
+    'Diagrammet fördelar månadens manuella kommandon efter ventilens fraktion ' +
+    '(Rest, Organic/Matavfall, Plast etc.) baserat på Info-kolumnen. ' +
+    'Om en fraktion ligger konsekvent över de andra är sannolikt sensor- eller ' +
+    'tömningslogiken för just den typ av avfall problematisk. ' +
+    '\n\n' +
+    'Matavfall (Organic) har ofta hög manuell andel när nivågivarna sitter igen av ' +
+    'organiskt material. Plast kan få spikar vid felsortering (volyminösa förpackningar). ' +
+    'Ventiler utan tydlig fraktionsmappning grupperas som "Okänd".',
+
   'Topp-15 ventiler (manuell%)':
     'Röd >50%, orange >20%, grön <20%. Ventiler med hög manuell% + 100% tillgänglighet = dold risk.' +
     '\n\n' +
@@ -808,6 +878,27 @@ export const CHART_INFO = {
     'Diagrammet visar hur larmfördelningen varierar över tid. ' +
     'Om Critical eller Total stop ökar över tid bör man undersöka vilka grenar och ventiler som genererar dessa larm. ' +
     'En hög andel General-larm är normalt — de är informativa och visar att styrsystemet övervakar korrekt.',
+
+  'Stoppkategorier per månad':
+    'Summerad månadsvy över alla driftkritiska larmkategorier (Total stop, Critical, General, Emergency & Safety m.fl.).' +
+    '\n\n' +
+    'Staplarna visar det totala antalet larm som tillhör stopp- och stoppliknande kategorier per månad. ' +
+    'Detta är ett snabbt sätt att se den övergripande driftrisken: höga värden indikerar månader med många stopp eller allvarliga händelser. ' +
+    'Jämför med tömningsvolymen och manuella ingrepp för att förstå om en topp beror på ' +
+    'ökad belastning eller på tekniska problem.' +
+    '\n\n' +
+    'Kategorierna som räknas är de vars namn innehåller "stop" (case-insensitive) samt ' +
+    '"Critical", "General" och "Emergency & Safety" — alla driftkritiska kategorier i datan.',
+
+  'Larm per enskild kategori':
+    'Ett litet stapeldiagram per larmkategori som visar månadsfördelningen för just den kategorin.' +
+    '\n\n' +
+    'Rutnätet gör det enkelt att jämföra utvecklingen mellan olika kategorier. ' +
+    'En kategori med en tydlig stigande trend (t.ex. Total stop) är en varningssignal som kräver utredning. ' +
+    'Stabila eller minskande värden är positivt.' +
+    '\n\n' +
+    'Varje ruta visar månadsvärden i kronologisk ordning. I jämförelseläge visas även ' +
+    'värdena för de andra valda anläggningarna som separata staplar.',
 
   // Gren (extra)
   'Manuell andel per gren':

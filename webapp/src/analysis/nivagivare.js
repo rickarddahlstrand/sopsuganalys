@@ -15,9 +15,11 @@
  *   - "Saknad rapportering vissa månader": availability = 0 eller
  *     ventilen dyker upp i vissa månader men inte andra
  *
- * Källor: Sheet9 (kommandon), Sheet11 (availability + felkoder LEVEL_ERROR,
- * LONG_TIME_SINCE_LAST_COLLECTION).
+ * Källor: Sheet9 (kommandon + HIGH_LEVEL/LOW_LEVEL-räknare), Sheet11
+ * (availability + felkoder LEVEL_ERROR, LONG_TIME_SINCE_LAST_COLLECTION).
  */
+
+import { buildValveFractionMap } from '../utils/valveFraction'
 
 const LEVEL_ERROR_KEY = 'LEVEL_ERROR'
 const LONG_TIME_KEY = 'LONG_TIME_SINCE_LAST_COLLECTION'
@@ -74,6 +76,33 @@ export function analyzeNivagivare(parsedFiles) {
 
   const monthlyLevelErrors = buildMonthlyErrorSeries(parsedFiles)
 
+  // Fraktions-mappning (från delad util). Returnerar Map<valveId, fraction>.
+  const fractionMap = buildValveFractionMap(parsedFiles)
+
+  // Ventiler med noteringar — bara de som har minst en > 0 under hela perioden
+  // för respektive fält. Används för att filtrera bort obetydliga ventiler.
+  const valvesWithLongTime = new Set(
+    valveRows.filter(v => v.totalLongTime > 0).map(v => v.valveId)
+  )
+  const totalHighPerValve = sumPerValve(parsedFiles, 'highLevel')
+  const totalLowPerValve = sumPerValve(parsedFiles, 'lowLevel')
+  const valvesWithHigh = new Set(
+    Object.entries(totalHighPerValve).filter(([, v]) => v > 0).map(([k]) => k)
+  )
+  const valvesWithLow = new Set(
+    Object.entries(totalLowPerValve).filter(([, v]) => v > 0).map(([k]) => k)
+  )
+
+  const longTimePerMonthByFraction = buildLongTimePerMonthByFraction(
+    parsedFiles, valvesWithLongTime, fractionMap
+  )
+  const highLevelMonthly = buildMonthlyFieldSeries(
+    parsedFiles, 'highLevel', valvesWithHigh
+  )
+  const lowLevelMonthly = buildMonthlyFieldSeries(
+    parsedFiles, 'lowLevel', valvesWithLow
+  )
+
   // Per-branch aggregation
   const branchMap = {}
   for (const v of valveRows) {
@@ -123,6 +152,9 @@ export function analyzeNivagivare(parsedFiles) {
     missingReporting,
     branchSummary,
     monthlyLevelErrors,
+    longTimePerMonthByFraction,
+    highLevelMonthly,
+    lowLevelMonthly,
     monthKeys: monthKeys.sort((a, b) => a.sortKey - b.sortKey),
   }
 }
@@ -293,6 +325,84 @@ function buildMonthlyErrorSeries(parsedFiles) {
   return Object.values(byMonth).sort((a, b) => a.sortKey - b.sortKey)
 }
 
+/**
+ * Summera ett numeriskt fält (t.ex. "highLevel" eller "lowLevel") från Sheet9
+ * per ventil över hela perioden. Används för att filtrera bort ventiler som
+ * saknar noteringar helt.
+ */
+function sumPerValve(parsedFiles, field) {
+  const totals = {}
+  for (const file of parsedFiles) {
+    for (const r of file.sheets.sheet9 || []) {
+      if (!r.id) continue
+      totals[r.id] = (totals[r.id] || 0) + (r[field] || 0)
+    }
+  }
+  return totals
+}
+
+/**
+ * Stackat månatligt totalantal LONG_TIME_SINCE_LAST_COLLECTION fördelat per
+ * fraktion. Bara ventiler i `valveFilter` räknas (de som har noteringar under
+ * perioden). Ventiler utan känd fraktion samlas under etiketten "Okänd".
+ * Returnerar { months: ['2025-01', ...], fractions: ['Rest', 'Plastic'],
+ *              data: [{ month, Rest: 3, Plastic: 1, ... }] }.
+ */
+function buildLongTimePerMonthByFraction(parsedFiles, valveFilter, fractionMap) {
+  const byMonth = {}
+  const fractions = new Set()
+
+  for (const file of parsedFiles) {
+    const key = file.sortKey
+    if (!byMonth[key]) {
+      byMonth[key] = { sortKey: key, month: file.month, monthNum: file.monthNum, _fracs: {} }
+    }
+    for (const r11 of file.sheets.sheet11 || []) {
+      if (!valveFilter.has(r11.id)) continue
+      const v = r11.errors?.[LONG_TIME_KEY] || 0
+      if (v <= 0) continue
+      const frac = fractionMap?.get(r11.id) || 'Okänd'
+      fractions.add(frac)
+      byMonth[key]._fracs[frac] = (byMonth[key]._fracs[frac] || 0) + v
+    }
+  }
+
+  const sortedFracs = [...fractions].sort()
+  const data = Object.values(byMonth)
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map(m => {
+      const entry = { month: m.month, sortKey: m.sortKey, monthNum: m.monthNum }
+      for (const f of sortedFracs) entry[f] = m._fracs[f] || 0
+      return entry
+    })
+
+  return { months: data.map(d => d.month), fractions: sortedFracs, data }
+}
+
+/**
+ * Månatlig summa av ett Sheet9-fält (t.ex. "highLevel", "lowLevel") över bara
+ * ventiler som har noteringar någon gång i perioden.
+ */
+function buildMonthlyFieldSeries(parsedFiles, field, valveFilter) {
+  const byMonth = {}
+  for (const file of parsedFiles) {
+    const key = file.sortKey
+    if (!byMonth[key]) {
+      byMonth[key] = {
+        sortKey: key,
+        month: file.month,
+        monthNum: file.monthNum,
+        count: 0,
+      }
+    }
+    for (const r9 of file.sheets.sheet9 || []) {
+      if (!valveFilter.has(r9.id)) continue
+      byMonth[key].count += r9[field] || 0
+    }
+  }
+  return Object.values(byMonth).sort((a, b) => a.sortKey - b.sortKey)
+}
+
 function parseValveId(vid) {
   const parts = String(vid).split(':')
   if (parts.length !== 2) return { branch: -1, valveNum: -1 }
@@ -332,6 +442,9 @@ function emptyResult() {
     missingReporting: [],
     branchSummary: [],
     monthlyLevelErrors: [],
+    longTimePerMonthByFraction: { months: [], fractions: [], data: [] },
+    highLevelMonthly: [],
+    lowLevelMonthly: [],
     monthKeys: [],
   }
 }

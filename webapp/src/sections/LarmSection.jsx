@@ -12,6 +12,7 @@ import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import StatusBadge from '../components/common/StatusBadge'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
+import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
@@ -71,6 +72,49 @@ export default function LarmSection() {
     month: m.month,
     ...m.categories,
   }))
+
+  // Stoppkategorier per månad (summa av alla stop-kategorier)
+  const stopMonthly = l.stopCategoriesMonthly || []
+  const hasCompareStop = compareMode && compareFacilities?.some(cf => cf.data?.larm?.stopCategoriesMonthly)
+  const localFacilityName = state.facilityName || 'Lokal'
+  const stopBarData = hasCompareStop
+    ? stopMonthly.map(m => {
+        const row = { month: m.month, [localFacilityName]: m.stopTotal }
+        for (const cf of compareFacilities) {
+          const cfm = cf.data?.larm?.stopCategoriesMonthly
+          if (cfm) {
+            const match = cfm.find(x => x.month === m.month)
+            if (match) row[cf.name || 'Jämförelse'] = match.stopTotal
+          }
+        }
+        return row
+      })
+    : stopMonthly.map(m => ({ month: m.month, Stoppar: m.stopTotal }))
+  const stopBarKeys = hasCompareStop
+    ? [localFacilityName, ...compareFacilities.filter(cf => cf.data?.larm?.stopCategoriesMonthly).map(cf => cf.name || 'Jämförelse')]
+    : ['Stoppar']
+
+  // Per-kategori grid — data och jämförelse
+  const categoryList = l.categories || []
+  const buildCategoryData = (cat) => {
+    if (!hasCompareStop) {
+      return l.monthlyTotals.map(m => ({ month: m.month, Antal: m.categories[cat] || 0 }))
+    }
+    return l.monthlyTotals.map(m => {
+      const row = { month: m.month, [localFacilityName]: m.categories[cat] || 0 }
+      for (const cf of compareFacilities) {
+        const cfLarm = cf.data?.larm
+        if (cfLarm?.monthlyTotals) {
+          const match = cfLarm.monthlyTotals.find(x => x.month === m.month)
+          if (match) row[cf.name || 'Jämförelse'] = match.categories?.[cat] || 0
+        }
+      }
+      return row
+    })
+  }
+  const categoryBarKeys = hasCompareStop
+    ? [localFacilityName, ...compareFacilities.filter(cf => cf.data?.larm?.monthlyTotals).map(cf => cf.name || 'Jämförelse')]
+    : ['Antal']
 
   return (
     <SectionWrapper id="larm" title="Larm" icon={AlertTriangle} info={SECTION_INFO.larm}>
@@ -158,7 +202,70 @@ export default function LarmSection() {
             />
           </ChartCard>
         )}
+
+        {stopMonthly.length > 0 && (
+          <ChartCard
+            title="Stoppkategorier per månad"
+            height={300}
+            info={CHART_INFO['Stoppkategorier per månad']}
+          >
+            <ResponsiveBar
+              data={stopBarData}
+              keys={stopBarKeys}
+              indexBy="month"
+              theme={theme}
+              colors={hasCompareStop ? ['#b91c1c', ...COMPARE_COLORS.slice(0, stopBarKeys.length - 1)] : ['#b91c1c']}
+              groupMode={hasCompareStop ? 'grouped' : 'stacked'}
+              borderRadius={3}
+              padding={0.3}
+              margin={{ top: 10, right: hasCompareStop ? 120 : 10, bottom: 35, left: 55 }}
+              axisLeft={{ tickSize: 0, tickPadding: 5 }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              enableLabel={false}
+              legends={hasCompareStop ? [{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 120, itemWidth: 110, itemHeight: 16, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }] : []}
+            />
+          </ChartCard>
+        )}
       </div>
+
+      {categoryList.length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+            Larm per enskild kategori
+            <InfoButton text={CHART_INFO['Larm per enskild kategori']} size={14} />
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categoryList.map((cat, idx) => {
+              const catData = buildCategoryData(cat)
+              const baseColor = ['#ef4444', '#f97316', '#eab308', '#8b5cf6', '#14b8a6', '#ec4899'][idx % 6]
+              return (
+                <ChartCard
+                  key={cat}
+                  title={cat}
+                  height={220}
+                  info={CHART_INFO['Larm per enskild kategori']}
+                >
+                  <ResponsiveBar
+                    data={catData}
+                    keys={categoryBarKeys}
+                    indexBy="month"
+                    theme={theme}
+                    colors={hasCompareStop ? [baseColor, ...COMPARE_COLORS.slice(0, categoryBarKeys.length - 1)] : [baseColor]}
+                    groupMode={hasCompareStop ? 'grouped' : 'stacked'}
+                    borderRadius={2}
+                    padding={0.25}
+                    margin={{ top: 8, right: 8, bottom: 30, left: 40 }}
+                    axisLeft={{ tickSize: 0, tickPadding: 4, tickValues: 4 }}
+                    axisBottom={{ tickSize: 0, tickPadding: 4, tickRotation: -45 }}
+                    enableLabel={false}
+                    enableGridY={true}
+                  />
+                </ChartCard>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {alarmAnomalies.length > 0 && (
         <div className="mt-6">

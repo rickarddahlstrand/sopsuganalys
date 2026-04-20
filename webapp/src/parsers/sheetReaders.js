@@ -89,7 +89,7 @@ export function extractSheet7(workbook) {
   return result
 }
 
-/** Sheet9 (header_row 3): ID, Info, MAN_OPEN_CMD, AUTO_OPEN_CMD, INLET_OPEN */
+/** Sheet9 (header_row 3): ID, Info, MAN_OPEN_CMD, AUTO_OPEN_CMD, INLET_OPEN, HIGH_LEVEL, LOW_LEVEL */
 export function extractSheet9(workbook) {
   const rows = readSheet(workbook, 'Sheet9', 3)
   if (!rows.length) return []
@@ -98,13 +98,15 @@ export function extractSheet9(workbook) {
   const idCol = headers.find(h => h.toLowerCase().trim() === 'id')
   const infoCol = findCol(headers, 'info')
 
-  // Command columns
+  // Command/level columns
   const cmdCols = {}
   for (const h of headers) {
     const up = h.trim().toUpperCase()
     if (up === 'MAN_OPEN_CMD') cmdCols.manCmd = h
     else if (up === 'AUTO_OPEN_CMD') cmdCols.autoCmd = h
     else if (up === 'INLET_OPEN') cmdCols.inletOpen = h
+    else if (up === 'HIGH_LEVEL') cmdCols.highLevel = h
+    else if (up === 'LOW_LEVEL') cmdCols.lowLevel = h
   }
 
   const result = []
@@ -118,6 +120,8 @@ export function extractSheet9(workbook) {
       manCmd: toNum(row[cmdCols.manCmd]) || 0,
       autoCmd: toNum(row[cmdCols.autoCmd]) || 0,
       inletOpen: toNum(row[cmdCols.inletOpen]) || 0,
+      highLevel: toNum(row[cmdCols.highLevel]) || 0,
+      lowLevel: toNum(row[cmdCols.lowLevel]) || 0,
     })
   }
   return result

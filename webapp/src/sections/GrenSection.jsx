@@ -38,11 +38,9 @@ export default function GrenSection() {
   const ctrend = compareData?.trendanalys
 
   const [healthSort, setHealthSort] = useState('default')
-  const [manualSort, setManualSort] = useState('default')
   const printMode = state.printMode
   const [showAllHealth, setShowAllHealth] = useState(false)
   const [showAllError, setShowAllError] = useState(false)
-  const [showAllManual, setShowAllManual] = useState(false)
 
   if (!gren) return <SectionWrapper id="grenar" title="Grenanalys" icon={GitBranch} info={SECTION_INFO.grenar}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -88,16 +86,6 @@ export default function GrenSection() {
       .sort((a, b) => a.sortKey - b.sortKey)
       .map(r => ({ x: r.month, y: r.totalErrors })),
   })).filter(l => l.data.length > 0)
-
-  // Manual% per branch (horizontal bar)
-  const allManualBranches = profiles
-    .filter(p => p.manualPct > 0)
-    .sort((a, b) => b.manualPct - a.manualPct)
-  const manualLimit = showAllManual ? allManualBranches.length : 15
-  const manualDataRaw = allManualBranches
-    .slice(0, manualLimit)
-    .map(p => ({ branch: `Gren ${p.branch}`, manualPct: p.manualPct }))
-  const manualData = applySortBar(manualDataRaw, 'manualPct', manualSort)
 
   // Season grouped bar
   const seasonData = profiles.filter(p => p.summerCmd > 0 || p.winterCmd > 0).map(p => ({
@@ -221,39 +209,6 @@ export default function GrenSection() {
             />
           )}
         </ChartCard>
-
-        {manualData.length > 0 && (
-          <ChartCard
-            title={`Manuell andel per gren (${manualData.length} st)`}
-            height={Math.max(250, manualData.length * 25)}
-            info={CHART_INFO['Manuell andel per gren']}
-            controls={<>
-              <SortToggle sortMode={manualSort} onChange={setManualSort} />
-              {!printMode && allManualBranches.length > 15 && (
-                <button onClick={() => setShowAllManual(s => !s)} className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-colors">
-                  {showAllManual ? <><ChevronUp className="w-3 h-3" />Visa 15</> : <><ChevronDown className="w-3 h-3" />Alla ({allManualBranches.length})</>}
-                </button>
-              )}
-            </>}
-          >
-            <ResponsiveBar
-              data={manualData}
-              keys={['manualPct']}
-              indexBy="branch"
-              layout="horizontal"
-              theme={theme}
-              borderRadius={3}
-              padding={0.3}
-              margin={{ top: 10, right: 30, bottom: 30, left: 80 }}
-              axisLeft={{ tickSize: 0, tickPadding: 5 }}
-              axisBottom={{ tickSize: 0, tickPadding: 5 }}
-              enableLabel={true}
-              label={d => `${d.value}%`}
-              labelTextColor="#fff"
-              colors={['#a855f7']}
-            />
-          </ChartCard>
-        )}
 
         {seasonData.length > 0 && (
           <ChartCard title="Sommar vs vinter per gren (kommandon)" height={300} info={CHART_INFO['Sommar vs vinter per gren (kommandon)']}>

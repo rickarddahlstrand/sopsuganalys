@@ -1,19 +1,18 @@
-import { useState, useCallback } from 'react'
-import { Activity, ChevronDown, ChevronUp } from 'lucide-react'
+import { useMemo, useState, useCallback } from 'react'
+import { Activity, ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, pct } from '../utils/formatters'
 import { ERROR_COLORS, ERROR_NAMES_SV } from '../utils/colors'
 import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
+import { buildValveFractionMap, getValveFraction, fractionLabelSv } from '../utils/valveFraction'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
 import ChartCard from '../components/common/ChartCard'
-import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
-import StatusBadge from '../components/common/StatusBadge'
 import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
@@ -46,13 +45,31 @@ export default function VentilerSection() {
     })
   }, [])
 
+  const fractionMap = useMemo(
+    () => buildValveFractionMap(state.parsedFiles || []),
+    [state.parsedFiles]
+  )
+
+  const valveInfoMap = useMemo(() => {
+    const m = new Map()
+    for (const file of state.parsedFiles || []) {
+      for (const row of file.sheets?.sheet11 || []) {
+        if (row.id && !m.has(row.id) && row.info) m.set(row.id, row.info)
+      }
+      for (const row of file.sheets?.sheet9 || []) {
+        if (row.id && !m.has(row.id) && row.info) m.set(row.id, row.info)
+      }
+    }
+    return m
+  }, [state.parsedFiles])
+
   if (!v) return <SectionWrapper id="ventiler" title="Ventilhälsa" icon={Activity} info={SECTION_INFO.ventiler}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
   const allWorst = v.worstValves || []
   const chartLimit = showAllChart ? allWorst.length : DEFAULT_CHART_LIMIT
   const chartData = allWorst.slice(0, chartLimit)
-  const tableLimit = showAllTable ? allWorst.length : DEFAULT_TABLE_LIMIT
-  const tableData = allWorst.slice(0, tableLimit)
+  const cardLimit = showAllTable ? allWorst.length : DEFAULT_TABLE_LIMIT
+  const cardData = allWorst.slice(0, cardLimit)
 
   // Availability line with min/max band
   const availPoints = v.monthlyAvailSummary.map(m => ({ x: m.month, y: m.mean }))
@@ -85,7 +102,8 @@ export default function VentilerSection() {
     return <path d={d} fill={dark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'} />
   }
 
-  // Error types stacked bar - translate to Swedish
+  // Error types stacked bar - translate to Swedish (LONG_TIME_SINCE_LAST_COLLECTION
+  // exkluderas ur feltypsfordelning och visas separat som nivaindikator i Nivagivare-sektionen)
   const errorKeys = v.errorNames
   const errorKeysSv = errorKeys.map(k => ERROR_NAMES_SV[k] || k)
   const errorBarData = v.monthlyErrors.map(m => {
@@ -96,6 +114,7 @@ export default function VentilerSection() {
     return obj
   })
   const errorColors = errorKeys.map(k => ERROR_COLORS[k] || '#94a3b8')
+  const longTimeTotal = v.longTimeTotal || 0
 
   // Worst valves spaghetti lines - sort by sortKey for correct chronological order
   // Build month lookup from sorted data
@@ -159,21 +178,31 @@ export default function VentilerSection() {
         </ChartCard>
 
         <ChartCard title="Feltyper per månad (stacked)" height={300} info={CHART_INFO['Feltyper per månad (stacked)']}>
-          <ResponsiveBar
-            data={errorBarData}
-            keys={errorKeysSv}
-            indexBy="month"
-            theme={theme}
-            groupMode="stacked"
-            borderRadius={2}
-            padding={0.3}
-            margin={{ top: 10, right: 90, bottom: 35, left: 55 }}
-            axisLeft={{ tickSize: 0, tickPadding: 5 }}
-            axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
-            enableLabel={false}
-            colors={errorColors}
-            legends={[{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 90, itemWidth: 80, itemHeight: 14, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
-          />
+          <div className="h-full flex flex-col">
+            {longTimeTotal > 0 && (
+              <div className="mx-2 mt-1 mb-2 px-3 py-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200/60 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>Ej tömt länge ({fmt(longTimeTotal)} tillfällen) — se Nivågivare-sektionen för fördelning per fraktion.</span>
+              </div>
+            )}
+            <div className="flex-1 min-h-0">
+              <ResponsiveBar
+                data={errorBarData}
+                keys={errorKeysSv}
+                indexBy="month"
+                theme={theme}
+                groupMode="stacked"
+                borderRadius={2}
+                padding={0.3}
+                margin={{ top: 10, right: 90, bottom: 35, left: 55 }}
+                axisLeft={{ tickSize: 0, tickPadding: 5 }}
+                axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+                enableLabel={false}
+                colors={errorColors}
+                legends={[{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 90, itemWidth: 80, itemHeight: 14, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
+              />
+            </div>
+          </div>
         </ChartCard>
 
         <ChartCard
@@ -250,7 +279,7 @@ export default function VentilerSection() {
         </ChartCard>
       </div>
 
-      {tableData.length > 0 && (
+      {cardData.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Sämsta ventilerna<InfoButton text={TABLE_INFO['Sämsta ventilerna']} size={14} /></h4>
@@ -263,21 +292,62 @@ export default function VentilerSection() {
               </button>
             )}
           </div>
-          <DataTable
-            columns={[
-              { key: 'valveId', label: 'Ventil' },
-              { key: 'avgAvailability', label: 'Tillgänglighet', render: v => (
-                <span className="flex items-center gap-2">
-                  {pct(v)}
-                  <StatusBadge status={v < 95 ? 'critical' : v < 99 ? 'warning' : 'ok'} label={v < 95 ? 'Kritisk' : v < 99 ? 'Varning' : 'OK'} />
-                </span>
-              )},
-              { key: 'totalErrors', label: 'Totala fel', render: v => fmt(v) },
-            ]}
-            data={tableData}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            {cardData.map(w => (
+              <WorstValveCard
+                key={w.valveId}
+                valveId={w.valveId}
+                availability={w.avgAvailability}
+                totalErrors={w.totalErrors}
+                fraction={getValveFraction(w.valveId, fractionMap)}
+                info={valveInfoMap.get(w.valveId) || ''}
+              />
+            ))}
+          </div>
         </div>
       )}
     </SectionWrapper>
+  )
+}
+
+function availabilityTone(value) {
+  if (value == null) return { border: 'border-slate-300 dark:border-slate-700', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300', label: '—' }
+  if (value < 95) return { border: 'border-red-300 dark:border-red-800', badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', label: 'Kritisk' }
+  if (value < 99) return { border: 'border-orange-300 dark:border-orange-800', badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300', label: 'Varning' }
+  return { border: 'border-emerald-300 dark:border-emerald-800', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', label: 'OK' }
+}
+
+function WorstValveCard({ valveId, availability, totalErrors, fraction, info }) {
+  const tone = availabilityTone(availability)
+  const fractionLabel = fraction ? fractionLabelSv(fraction) : '—'
+  // Info-faltet borjar oftast med fraktionsnamnet fran bla Sheet9/11 — visa resten som grenbeskrivning
+  const extraInfo = info
+    ? info.replace(/^[^,]+,\s*/, '').trim()
+    : ''
+
+  return (
+    <div className={`rounded-lg border ${tone.border} bg-slate-50 dark:bg-slate-800/50 p-4 flex flex-col gap-2`}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{valveId}</span>
+        <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${tone.badge}`}>
+          {tone.label}
+        </span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{pct(availability)}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">tillgänglighet</span>
+      </div>
+      <div className="text-sm text-slate-600 dark:text-slate-300">
+        Fraktion: <span className="font-medium">{fractionLabel}</span>
+      </div>
+      <div className="text-sm text-slate-600 dark:text-slate-300">
+        Fel: <span className="font-medium">{fmt(totalErrors)}</span>
+      </div>
+      {extraInfo && (
+        <div className="text-xs text-slate-500 dark:text-slate-400 truncate" title={extraInfo}>
+          {extraInfo}
+        </div>
+      )}
+    </div>
   )
 }

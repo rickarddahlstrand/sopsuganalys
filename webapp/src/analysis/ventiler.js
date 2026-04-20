@@ -3,10 +3,16 @@
  * Sources: Sheet9 (commands), Sheet11 (availability + errors)
  */
 
-const ERROR_NAMES = [
+// LONG_TIME_SINCE_LAST_COLLECTION ar en tomningsindikator, inte ett fel —
+// den behandlas separat fran ovriga felkoder i UI:t.
+const LONG_TIME_KEY = 'LONG_TIME_SINCE_LAST_COLLECTION'
+
+const ERROR_NAMES_ALL = [
   'DOES_NOT_CLOSE', 'DOES_NOT_OPEN', 'LEVEL_ERROR',
   'LONG_TIME_SINCE_LAST_COLLECTION', 'ERROR_FEEDBACK_FROM_USER',
 ]
+
+const ERROR_NAMES = ERROR_NAMES_ALL.filter(n => n !== LONG_TIME_KEY)
 
 export function analyzeVentiler(parsedFiles) {
   const availability = []  // per valve per month
@@ -65,9 +71,10 @@ export function analyzeVentiler(parsedFiles) {
     avgAvailability: round2(avg(vals)),
   }))
 
-  // Total errors per valve
+  // Total errors per valve (exkl. LONG_TIME_SINCE_LAST_COLLECTION)
   const valveErrors = {}
   for (const e of errors) {
+    if (e.errorType === LONG_TIME_KEY) continue
     valveErrors[e.valveId] = (valveErrors[e.valveId] || 0) + e.count
   }
 
@@ -94,25 +101,37 @@ export function analyzeVentiler(parsedFiles) {
     }))
     .sort((a, b) => a.sortKey - b.sortKey)
 
-  // Monthly errors by type
+  // Monthly errors by type (exkl. LONG_TIME_SINCE_LAST_COLLECTION)
   const monthlyErrors = {}
+  const longTimeMonthly = {}
   for (const e of errors) {
+    if (e.errorType === LONG_TIME_KEY) {
+      if (!longTimeMonthly[e.sortKey]) longTimeMonthly[e.sortKey] = { monthNum: e.monthNum, sortKey: e.sortKey, month: e.month, count: 0 }
+      longTimeMonthly[e.sortKey].count += e.count
+      continue
+    }
     if (!monthlyErrors[e.sortKey]) monthlyErrors[e.sortKey] = { monthNum: e.monthNum, sortKey: e.sortKey, month: e.month }
     monthlyErrors[e.sortKey][e.errorType] = (monthlyErrors[e.sortKey][e.errorType] || 0) + e.count
   }
   const monthlyErrorsSorted = Object.values(monthlyErrors).sort((a, b) => a.sortKey - b.sortKey)
+  const longTimeMonthlySorted = Object.values(longTimeMonthly).sort((a, b) => a.sortKey - b.sortKey)
 
-  // Error type totals
+  // Error type totals (exkl. LONG_TIME_SINCE_LAST_COLLECTION)
   const errorTypeTotals = {}
+  let longTimeTotal = 0
   for (const e of errors) {
+    if (e.errorType === LONG_TIME_KEY) {
+      longTimeTotal += e.count
+      continue
+    }
     errorTypeTotals[e.errorType] = (errorTypeTotals[e.errorType] || 0) + e.count
   }
 
-  // Overall stats
+  // Overall stats — totalErrors exkluderar LONG_TIME_SINCE_LAST_COLLECTION
   const allAvails = availability.map(a => a.availability)
   const overallAvail = round2(avg(allAvails))
   const uniqueValves = new Set(availability.map(a => a.valveId)).size
-  const totalErrors = errors.reduce((s, e) => s + e.count, 0)
+  const totalErrors = errors.reduce((s, e) => e.errorType === LONG_TIME_KEY ? s : s + e.count, 0)
 
   return {
     availability,
@@ -122,6 +141,8 @@ export function analyzeVentiler(parsedFiles) {
     monthlyAvailSummary,
     monthlyErrors: monthlyErrorsSorted,
     errorTypeTotals,
+    longTimeTotal,
+    longTimeMonthly: longTimeMonthlySorted,
     overallAvail,
     uniqueValves,
     totalErrors,

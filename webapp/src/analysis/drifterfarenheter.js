@@ -16,15 +16,64 @@ export function analyzeDrifterfarenheter(trendanalys, ventiler, manuellAnalys, l
   const energy = analyzeEnergyEfficiency(trendanalys)
   const manualTrend = analyzeManualTrend(manuellAnalys)
   const alarms = analyzeAlarmPatterns(trendanalys, ventiler, larm)
-  const findings = createSummary(manualVsErrors, energy, manualTrend, alarms)
+  const manualVsAlarmCategories = analyzeManualVsAlarmCategories(manuellAnalys, larm)
+  const findings = createSummary(manualVsErrors, energy, manualTrend, alarms, manualVsAlarmCategories)
 
   return {
     manualVsErrors,
     energy,
     manualTrend,
     alarms,
+    manualVsAlarmCategories,
     findings,
   }
+}
+
+/**
+ * Pearson-korrelation mellan manuell andel per månad och larm per kategori per månad.
+ * Syfte: identifiera vilka larmtyper som samvarierar med ökat manuellt arbete.
+ */
+function analyzeManualVsAlarmCategories(manuellAnalys, larm) {
+  if (!manuellAnalys?.monthly?.length || !larm?.monthlyTotals?.length) return { correlations: [] }
+
+  const manBySort = {}
+  for (const m of manuellAnalys.monthly) manBySort[m.sortKey] = m.manualPct
+
+  // Samla alla kategorier
+  const categorySet = new Set()
+  for (const mt of larm.monthlyTotals) {
+    for (const cat of Object.keys(mt.categories || {})) categorySet.add(cat)
+  }
+
+  const correlations = []
+  for (const cat of categorySet) {
+    const manVals = []
+    const alarmVals = []
+    for (const mt of larm.monthlyTotals) {
+      const manP = manBySort[mt.sortKey]
+      if (manP == null) continue
+      manVals.push(manP)
+      alarmVals.push(mt.categories?.[cat] || 0)
+    }
+    if (manVals.length < 3) continue
+    // Kräv variation i båda serier
+    if (!manVals.some(v => v > 0) || !alarmVals.some(v => v > 0)) continue
+
+    const { r, p } = pearsonCorrelation(manVals, alarmVals)
+    if (isNaN(r)) continue
+
+    correlations.push({
+      category: cat,
+      pearsonR: r,
+      pValue: p,
+      totalAlarms: alarmVals.reduce((s, v) => s + v, 0),
+      months: manVals.length,
+    })
+  }
+
+  // Sortera efter |r| (störst samband först)
+  correlations.sort((a, b) => Math.abs(b.pearsonR) - Math.abs(a.pearsonR))
+  return { correlations }
 }
 
 function analyzeManualVsErrors(trendanalys, ventiler, manuellAnalys) {
@@ -204,7 +253,7 @@ function analyzeAlarmPatterns(trendanalys, ventiler, larm) {
   return result
 }
 
-function createSummary(manualVsErrors, energy, manualTrend, alarms) {
+function createSummary(manualVsErrors, energy, manualTrend, alarms, manualVsAlarmCategories) {
   const findings = []
 
   if (manualVsErrors?.drivingErrorType) {
@@ -213,6 +262,17 @@ function createSummary(manualVsErrors, energy, manualTrend, alarms) {
       area: 'Manuella körningar',
       finding: `Manuella ingrepp drivs främst av ${manualVsErrors.drivingErrorType}-fel (r=${r.toFixed(2)}). Åtgärda dessa feltyper för att minska behovet av manuella körningar.`,
       priority: Math.abs(r) > 0.5 ? 1 : 2,
+    })
+  }
+
+  // Stark korrelation mellan manuell andel och larmkategori
+  const topCorr = manualVsAlarmCategories?.correlations?.[0]
+  if (topCorr && Math.abs(topCorr.pearsonR) > 0.6 && topCorr.pValue < 0.1) {
+    const direction = topCorr.pearsonR > 0 ? 'följs åt med' : 'minskar när det finns fler'
+    findings.push({
+      area: 'Manuell vs larm',
+      finding: `Manuell andel per månad ${direction} kategorin "${topCorr.category}" (r=${topCorr.pearsonR.toFixed(2)}, p=${topCorr.pValue < 0.001 ? '<0.001' : topCorr.pValue.toFixed(3)}). Indikerar att dessa larm kan vara driver eller symptom på manuellt arbete.`,
+      priority: Math.abs(topCorr.pearsonR) > 0.7 ? 1 : 2,
     })
   }
 

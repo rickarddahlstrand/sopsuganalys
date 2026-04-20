@@ -3,8 +3,13 @@
  * Sources: Sheet9 (commands), Sheet11 (availability), Sheet3 (operation time)
  */
 
+import { linregress } from '../stats/linregress'
+import { detectAnomalies } from '../stats/anomaly'
+import { buildValveFractionMap, getValveFraction } from '../utils/valveFraction'
+
 export function analyzeManuell(parsedFiles) {
   const manualData = []
+  const fractionMap = buildValveFractionMap(parsedFiles)
 
   for (const file of parsedFiles) {
     const { monthNum, sortKey, month, sheets } = file
@@ -26,6 +31,7 @@ export function analyzeManuell(parsedFiles) {
         month,
         valveId: r9.id,
         branch,
+        fraction: getValveFraction(r9.id, fractionMap),
         manCmd: r9.manCmd,
         autoCmd: r9.autoCmd,
         inletOpen: r9.inletOpen,
@@ -148,6 +154,12 @@ export function analyzeManuell(parsedFiles) {
   // All valves with significant manual commands, sorted by manualPct desc
   const topManualValves = valveSummary.filter(v => v.totalCmd > 10)
 
+  // Extra analyser för att förstå drivkrafter bakom manuell körning
+  const perFractionMonthly = computeFractionMonthly(manualData)
+  const risingTrendValves = computeRisingTrendValves(manualData)
+  const spikeMonths = computeSpikeMonths(monthly)
+  const seasonalComparison = computeSeasonalComparison(monthly)
+
   return {
     manualData,
     monthly,
@@ -158,6 +170,200 @@ export function analyzeManuell(parsedFiles) {
     totalAll,
     yearPct: totalAll > 0 ? Math.round(totalMan / totalAll * 10000) / 100 : 0,
     topManualValves,
+    perFractionMonthly,
+    risingTrendValves,
+    spikeMonths,
+    seasonalComparison,
+  }
+}
+
+/**
+ * Manuell andel per fraktion per månad.
+ * Returnerar:
+ *   {
+ *     fractions: ['Rest', 'Organic', ...],   // alla fraktioner, + ev. 'Okänd' sist
+ *     months:    [{ sortKey, month }, ...],  // sorterat på sortKey
+ *     series:    { [fraction]: [{ sortKey, month, manualPct, manTotal, totalCmd }, ...] }
+ *   }
+ */
+function computeFractionMonthly(manualData) {
+  const map = {}
+  const monthMap = {}
+  for (const r of manualData) {
+    const frac = r.fraction || 'Okänd'
+    const key = `${frac}|${r.sortKey}`
+    if (!map[key]) {
+      map[key] = {
+        fraction: frac,
+        sortKey: r.sortKey,
+        month: r.month,
+        manTotal: 0,
+        autoTotal: 0,
+      }
+    }
+    map[key].manTotal += r.manCmd
+    map[key].autoTotal += r.autoCmd
+    if (!monthMap[r.sortKey]) monthMap[r.sortKey] = { sortKey: r.sortKey, month: r.month }
+  }
+
+  const rows = Object.values(map).map(m => {
+    const total = m.manTotal + m.autoTotal
+    return {
+      fraction: m.fraction,
+      sortKey: m.sortKey,
+      month: m.month,
+      manTotal: m.manTotal,
+      autoTotal: m.autoTotal,
+      totalCmd: total,
+      manualPct: total > 0 ? Math.round(m.manTotal / total * 10000) / 100 : 0,
+    }
+  })
+
+  const fractionsSet = [...new Set(rows.map(r => r.fraction))]
+  // Sortera så att "Okänd" hamnar sist
+  const fractions = fractionsSet
+    .filter(f => f !== 'Okänd')
+    .sort()
+  if (fractionsSet.includes('Okänd')) fractions.push('Okänd')
+
+  const months = Object.values(monthMap).sort((a, b) => a.sortKey - b.sortKey)
+
+  const series = {}
+  for (const frac of fractions) {
+    series[frac] = rows
+      .filter(r => r.fraction === frac)
+      .sort((a, b) => a.sortKey - b.sortKey)
+  }
+
+  return { fractions, months, series }
+}
+
+/**
+ * Topp-ventiler med stigande manuell-trend.
+ * Beräknar linjär lutning (slope) på manualPct över tid per ventil.
+ * Returnerar ventiler med positiv, signifikant lutning sorterat på störst slope.
+ */
+function computeRisingTrendValves(manualData) {
+  const perValve = {}
+  for (const r of manualData) {
+    if (!perValve[r.valveId]) perValve[r.valveId] = { valveId: r.valveId, branch: r.branch, fraction: r.fraction, months: [] }
+    perValve[r.valveId].months.push({ sortKey: r.sortKey, month: r.month, manualPct: r.manualPct, totalCmd: r.totalCmd, manCmd: r.manCmd })
+  }
+
+  const results = []
+  for (const v of Object.values(perValve)) {
+    const sorted = v.months.sort((a, b) => a.sortKey - b.sortKey)
+    // Kräv minst 4 månader och minst några kommandon för meningsfull trend
+    if (sorted.length < 4) continue
+    const totalCmds = sorted.reduce((s, m) => s + m.totalCmd, 0)
+    if (totalCmds < 20) continue
+
+    const xs = sorted.map((_, i) => i)
+    const ys = sorted.map(m => m.manualPct)
+    const { slope, r, pValue, trendClass } = linregress(xs, ys)
+
+    const firstPct = sorted[0].manualPct
+    const lastPct = sorted[sorted.length - 1].manualPct
+    const change = lastPct - firstPct
+
+    results.push({
+      valveId: v.valveId,
+      branch: v.branch,
+      fraction: v.fraction,
+      slope,
+      r,
+      pValue,
+      trendClass,
+      months: sorted.length,
+      firstPct,
+      lastPct,
+      change: Math.round(change * 100) / 100,
+      totalManual: sorted.reduce((s, m) => s + m.manCmd, 0),
+    })
+  }
+
+  // Filtrera: stigande trend (slope > 0) och en rimlig förändring
+  const rising = results.filter(r => r.slope > 0 && r.change > 0.5)
+  rising.sort((a, b) => b.slope - a.slope)
+  return rising.slice(0, 10)
+}
+
+/**
+ * Månader där manuell andel avviker >1 stddev från genomsnittet.
+ */
+function computeSpikeMonths(monthly) {
+  if (!monthly || monthly.length < 3) return []
+
+  const values = monthly.map(m => m.manualPct)
+  const labels = monthly.map(m => m.month)
+  const meanVal = avg(values)
+  const std = Math.sqrt(avg(values.map(v => (v - meanVal) ** 2)))
+
+  // Använd tröskel 1.0 för att få fler relevanta toppar
+  const anomalies = detectAnomalies(values, labels, 1.0)
+  // Bara positiva avvikelser (spikar uppåt, inte dalar)
+  return anomalies
+    .filter(a => a.type === 'hög')
+    .map(a => {
+      const entry = monthly[a.index]
+      return {
+        month: a.label,
+        sortKey: entry.sortKey,
+        monthNum: entry.monthNum,
+        manualPct: entry.manualPct,
+        manTotal: entry.manTotal,
+        totalCmd: entry.totalCmd,
+        zScore: a.zScore,
+        deltaFromMean: Math.round((entry.manualPct - meanVal) * 100) / 100,
+      }
+    })
+    .sort((a, b) => b.zScore - a.zScore)
+}
+
+/**
+ * Säsongsjämförelse sommar (juni-aug) vs vinter (dec-feb) för manuell andel.
+ */
+function computeSeasonalComparison(monthly) {
+  if (!monthly || monthly.length === 0) return null
+  const summer = monthly.filter(m => [6, 7, 8].includes(m.monthNum))
+  const winter = monthly.filter(m => [12, 1, 2].includes(m.monthNum))
+
+  const summerAvg = summer.length > 0 ? avg(summer.map(m => m.manualPct)) : null
+  const winterAvg = winter.length > 0 ? avg(winter.map(m => m.manualPct)) : null
+
+  let delta = null
+  let deltaPct = null
+  if (summerAvg != null && winterAvg != null) {
+    delta = summerAvg - winterAvg
+    deltaPct = winterAvg > 0 ? (delta / winterAvg) * 100 : null
+  }
+
+  // Enkel signifikanstest: Welchs t ungefärligt via std
+  let significant = false
+  if (summer.length >= 2 && winter.length >= 2) {
+    const sVals = summer.map(m => m.manualPct)
+    const wVals = winter.map(m => m.manualPct)
+    const sMean = avg(sVals)
+    const wMean = avg(wVals)
+    const sVar = avg(sVals.map(v => (v - sMean) ** 2))
+    const wVar = avg(wVals.map(v => (v - wMean) ** 2))
+    const se = Math.sqrt(sVar / sVals.length + wVar / wVals.length)
+    if (se > 0) {
+      const t = Math.abs(sMean - wMean) / se
+      significant = t > 2.0 // grov tumregel
+    }
+  }
+
+  return {
+    summerAvg: summerAvg != null ? Math.round(summerAvg * 100) / 100 : null,
+    winterAvg: winterAvg != null ? Math.round(winterAvg * 100) / 100 : null,
+    summerCount: summer.length,
+    winterCount: winter.length,
+    delta: delta != null ? Math.round(delta * 100) / 100 : null,
+    deltaPct: deltaPct != null ? Math.round(deltaPct * 10) / 10 : null,
+    significant,
+    summerMonths: summer.map(m => m.month),
+    winterMonths: winter.map(m => m.month),
   }
 }
 

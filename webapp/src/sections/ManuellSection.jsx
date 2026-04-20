@@ -3,9 +3,10 @@ import { Hand, ChevronDown, ChevronUp } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
-import { fmt, pct } from '../utils/formatters'
+import { fmt, fmt1, fmt2, pct } from '../utils/formatters'
 import { manualColor } from '../utils/colors'
 import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
+import { fractionLabelSv } from '../utils/valveFraction'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -14,12 +15,16 @@ import DataTable from '../components/common/DataTable'
 import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import SortToggle from '../components/common/SortToggle'
+import StatusBadge from '../components/common/StatusBadge'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 
 const manualTrendLine = createTrendLineLayer('Manuella', '#7c3aed')
+
+// Färger för fraktioner (nivo set2 palette för konsekvens med FraktionSection)
+const FRACTION_COLORS = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
 
 function applySortBar(data, valueKey, sortMode) {
   if (sortMode === 'default') return data
@@ -92,6 +97,53 @@ export default function ManuellSection() {
   // Table data
   const tableValveLimit = showAllTable ? allManualValves.length : 15
   const tableValves = allManualValves.slice(0, tableValveLimit)
+
+  // Per-fraktion manuell andel per månad (linjediagram, en linje per fraktion)
+  const pfm = man.perFractionMonthly
+  const selfLabel = state.facilityName || ''
+  const fractionLineData = pfm?.fractions?.length > 0 ? pfm.fractions.map(frac => {
+    const fracLabel = frac === 'Okänd' ? 'Okänd' : (fractionLabelSv(frac) || frac)
+    return {
+      id: compareMode && selfLabel ? `${selfLabel} · ${fracLabel}` : fracLabel,
+      fraction: frac,
+      data: (pfm.series[frac] || [])
+        .filter(r => r.totalCmd > 0)
+        .map(r => ({ x: r.month, y: r.manualPct })),
+    }
+  }).filter(line => line.data.length > 0) : []
+
+  // Lägg till jämförelsefastigheter (om i compare-läge)
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      const cfpfm = cf.data?.manuellAnalys?.perFractionMonthly
+      if (!cfpfm?.fractions?.length) continue
+      for (const frac of cfpfm.fractions) {
+        const series = cfpfm.series?.[frac] || []
+        if (series.length === 0) continue
+        const fracLabel = frac === 'Okänd' ? 'Okänd' : (fractionLabelSv(frac) || frac)
+        fractionLineData.push({
+          id: `${cf.name || 'Jämförelse'} · ${fracLabel}`,
+          fraction: frac,
+          data: series
+            .filter(r => r.totalCmd > 0)
+            .map(r => ({ x: r.month, y: r.manualPct })),
+        })
+      }
+    }
+  }
+
+  // Rising trend valves
+  const risingValves = man.risingTrendValves || []
+
+  // Spike months
+  const spikes = man.spikeMonths || []
+
+  // Seasonal comparison
+  const season = man.seasonalComparison
+
+  // Manual vs alarm categories correlations (from drifterfarenheter)
+  const drift = state.drifterfarenheter
+  const alarmCatCorr = drift?.manualVsAlarmCategories?.correlations || []
 
   return (
     <SectionWrapper id="manuell" title="Manuella körningar" icon={Hand} info={SECTION_INFO.manuell}>
@@ -231,6 +283,140 @@ export default function ManuellSection() {
               { key: 'avgAvailability', label: 'Tillgänglighet', render: v => v != null ? pct(v) : '–' },
             ]}
             data={tableValves}
+          />
+        </div>
+      )}
+
+      {/* Säsongsjämförelse sommar vs vinter */}
+      {season && (season.summerAvg != null || season.winterAvg != null) && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">Säsongsjämförelse<InfoButton text={TABLE_INFO['Manuell säsongsanalys']} size={14} /></h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+              <div className="text-xs text-slate-500 dark:text-slate-400">Sommar (jun–aug)</div>
+              <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">{season.summerAvg != null ? `${fmt2(season.summerAvg)}%` : '–'}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{season.summerCount} månader</div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+              <div className="text-xs text-slate-500 dark:text-slate-400">Vinter (dec–feb)</div>
+              <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">{season.winterAvg != null ? `${fmt2(season.winterAvg)}%` : '–'}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{season.winterCount} månader</div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+              <div className="text-xs text-slate-500 dark:text-slate-400">Skillnad (sommar − vinter)</div>
+              <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                {season.delta != null ? `${season.delta > 0 ? '+' : ''}${fmt2(season.delta)} pp` : '–'}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5">
+                {season.deltaPct != null ? `${season.deltaPct > 0 ? '+' : ''}${fmt1(season.deltaPct)}% relativt` : ''}
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 flex flex-col">
+              <div className="text-xs text-slate-500 dark:text-slate-400">Signifikans</div>
+              <div className="mt-2">
+                {season.summerCount >= 2 && season.winterCount >= 2 ? (
+                  <StatusBadge
+                    status={season.significant ? 'warning' : 'ok'}
+                    label={season.significant ? 'Signifikant skillnad' : 'Ingen tydlig skillnad'}
+                  />
+                ) : (
+                  <StatusBadge status="info" label="Otillräckligt dataunderlag" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manuell andel per fraktion per månad */}
+      {fractionLineData.length > 0 && (
+        <div className="mt-6">
+          <ChartCard
+            title={`Manuell andel per fraktion per månad (%)`}
+            height={Math.max(320, compareMode ? 380 : 320)}
+            info={CHART_INFO['Manuell andel per fraktion per månad (%)']}
+          >
+            <ResponsiveLine
+              data={fractionLineData}
+              theme={theme}
+              colors={FRACTION_COLORS}
+              margin={{ top: 10, right: compareMode ? 180 : 110, bottom: 40, left: 55 }}
+              axisLeft={{ tickSize: 0, tickPadding: 5, legend: 'Manuell %', legendOffset: -45, legendPosition: 'middle' }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              pointSize={5}
+              pointColor={{ theme: 'background' }}
+              pointBorderWidth={2}
+              pointBorderColor={{ from: 'serieColor' }}
+              yScale={{ type: 'linear', min: 0, max: 'auto' }}
+              useMesh
+              enableSlices="x"
+              legends={[{ anchor: 'right', direction: 'column', translateX: compareMode ? 175 : 105, itemWidth: compareMode ? 160 : 90, itemHeight: 18, symbolSize: 10, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
+            />
+          </ChartCard>
+        </div>
+      )}
+
+      {/* Topp-10 ventiler med stigande manuell-trend */}
+      {risingValves.length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+            Ventiler med stigande manuell-trend (topp {risingValves.length})
+            <InfoButton text={TABLE_INFO['Stigande manuell-trend']} size={14} />
+          </h4>
+          <DataTable
+            columns={[
+              { key: 'valveId', label: 'Ventil' },
+              { key: 'branch', label: 'Gren' },
+              { key: 'fraction', label: 'Fraktion', render: v => v ? (fractionLabelSv(v) || v) : '–' },
+              { key: 'firstPct', label: 'Start %', render: v => `${fmt2(v)}%` },
+              { key: 'lastPct', label: 'Senast %', render: v => `${fmt2(v)}%` },
+              { key: 'change', label: 'Förändring', render: v => `${v > 0 ? '+' : ''}${fmt2(v)} pp` },
+              { key: 'slope', label: 'Lutning/mån', render: v => fmt2(v) },
+              { key: 'pValue', label: 'p', render: v => v != null ? (v < 0.001 ? '<0.001' : v.toFixed(3)) : '–' },
+              { key: 'totalManual', label: 'Manuella', render: v => fmt(v) },
+            ]}
+            data={risingValves}
+          />
+        </div>
+      )}
+
+      {/* Månader med manuell-spikar */}
+      {spikes.length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+            Månader med manuell-spikar
+            <InfoButton text={TABLE_INFO['Manuell-spikar per månad']} size={14} />
+          </h4>
+          <DataTable
+            columns={[
+              { key: 'month', label: 'Månad' },
+              { key: 'manualPct', label: 'Manuell%', render: v => `${v}%` },
+              { key: 'deltaFromMean', label: 'Avvikelse från snitt', render: v => `${v > 0 ? '+' : ''}${fmt2(v)} pp` },
+              { key: 'zScore', label: 'z-score', render: v => fmt2(v) },
+              { key: 'manTotal', label: 'Manuella', render: v => fmt(v) },
+              { key: 'totalCmd', label: 'Totalt', render: v => fmt(v) },
+            ]}
+            data={spikes}
+          />
+        </div>
+      )}
+
+      {/* Korrelation manuell vs larm per kategori */}
+      {alarmCatCorr.length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+            Korrelation: manuell andel vs larm per kategori
+            <InfoButton text={TABLE_INFO['Korrelation manuell vs larmkategorier']} size={14} />
+          </h4>
+          <DataTable
+            columns={[
+              { key: 'category', label: 'Larmkategori' },
+              { key: 'pearsonR', label: 'Pearson r', render: v => v?.toFixed(3) || '–' },
+              { key: 'pValue', label: 'p-värde', render: v => v != null ? (v < 0.001 ? '<0.001' : v.toFixed(3)) : '–' },
+              { key: 'totalAlarms', label: 'Totalt antal larm', render: v => fmt(v) },
+              { key: 'months', label: 'Månader' },
+            ]}
+            data={alarmCatCorr}
           />
         </div>
       )}

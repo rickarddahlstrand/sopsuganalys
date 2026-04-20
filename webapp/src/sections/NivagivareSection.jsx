@@ -5,6 +5,8 @@ import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { fmt, fmt1, pct } from '../utils/formatters'
 import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
+import { FRACTION_COLORS } from '../utils/colors'
+import { fractionLabelSv } from '../utils/valveFraction'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -87,6 +89,56 @@ export default function NivagivareSection() {
       branch: `Gren ${b.branch}`,
       Misstänkta: b.suspects,
     }))
+
+  // "Ej tömt länge" per månad fördelat per fraktion (stackat)
+  const longTimeFracSrc = n.longTimePerMonthByFraction || { months: [], fractions: [], data: [] }
+  const fractionLabelMap = {}
+  for (const f of longTimeFracSrc.fractions) {
+    fractionLabelMap[f] = fractionLabelSv(f) || f
+  }
+  const longTimeFracKeys = longTimeFracSrc.fractions.map(f => fractionLabelMap[f])
+  const longTimeFracData = longTimeFracSrc.data.map(row => {
+    const obj = { month: row.month }
+    for (const f of longTimeFracSrc.fractions) obj[fractionLabelMap[f]] = row[f] || 0
+    return obj
+  })
+  const longTimeFracColors = longTimeFracSrc.fractions.map(
+    (_, i) => FRACTION_COLORS[i % FRACTION_COLORS.length]
+  )
+
+  // Höga nivåer per månad (Sheet9 HIGH_LEVEL, bara ventiler med noteringar)
+  const highBarData = (n.highLevelMonthly || []).map(m => ({
+    month: m.month, Höga: m.count,
+  }))
+  // Låga nivåer per månad (Sheet9 LOW_LEVEL, bara ventiler med noteringar)
+  const lowBarData = (n.lowLevelMonthly || []).map(m => ({
+    month: m.month, Låga: m.count,
+  }))
+
+  // Jämförelsedata (andra anläggningar visas som grupperade staplar bredvid)
+  const compareHighKeys = []
+  const compareLowKeys = []
+  if (compareMode && compareFacilities?.length > 0) {
+    for (const cf of compareFacilities) {
+      const cfn = cf.data?.nivagivare
+      if (!cfn) continue
+      const label = cf.name || 'Jämförelse'
+      if (cfn.highLevelMonthly) {
+        const map = Object.fromEntries(cfn.highLevelMonthly.map(m => [m.month, m.count]))
+        for (const row of highBarData) row[label] = map[row.month] || 0
+        compareHighKeys.push(label)
+      }
+      if (cfn.lowLevelMonthly) {
+        const map = Object.fromEntries(cfn.lowLevelMonthly.map(m => [m.month, m.count]))
+        for (const row of lowBarData) row[label] = map[row.month] || 0
+        compareLowKeys.push(label)
+      }
+    }
+  }
+  const highBarKeys = ['Höga', ...compareHighKeys]
+  const lowBarKeys = ['Låga', ...compareLowKeys]
+  const highBarColors = ['#ef4444', ...COMPARE_COLORS.slice(0, compareHighKeys.length)]
+  const lowBarColors = ['#f97316', ...COMPARE_COLORS.slice(0, compareLowKeys.length)]
 
   const suspectColumns = [
     { key: 'valveId', label: 'Ventil' },
@@ -267,6 +319,90 @@ export default function NivagivareSection() {
               label={d => `${d.value}`}
               labelTextColor="#fff"
               colors={['#ef4444']}
+            />
+          </ChartCard>
+        )}
+
+        {longTimeFracData.length > 0 && longTimeFracKeys.length > 0 && (
+          <ChartCard
+            title="Ej tömt länge per månad (per fraktion)"
+            height={300}
+            info={CHART_INFO['Ej tömt länge per månad (per fraktion)']}
+          >
+            <ResponsiveBar
+              data={longTimeFracData}
+              keys={longTimeFracKeys}
+              indexBy="month"
+              theme={theme}
+              groupMode="stacked"
+              borderRadius={2}
+              padding={0.3}
+              margin={{ top: 10, right: 110, bottom: 35, left: 55 }}
+              axisLeft={{ tickSize: 0, tickPadding: 5 }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              enableLabel={false}
+              colors={longTimeFracColors}
+              legends={[{
+                dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 105,
+                itemWidth: 95, itemHeight: 16, symbolSize: 10,
+                itemTextColor: dark ? '#94a3b8' : '#64748b',
+              }]}
+            />
+          </ChartCard>
+        )}
+
+        {highBarData.some(d => d.Höga > 0) && (
+          <ChartCard
+            title="Höga nivåer per månad"
+            height={300}
+            info={CHART_INFO['Höga nivåer per månad']}
+          >
+            <ResponsiveBar
+              data={highBarData}
+              keys={highBarKeys}
+              indexBy="month"
+              theme={theme}
+              groupMode={compareHighKeys.length > 0 ? 'grouped' : 'stacked'}
+              borderRadius={2}
+              padding={0.3}
+              margin={{ top: 10, right: compareHighKeys.length > 0 ? 100 : 10, bottom: 35, left: 55 }}
+              axisLeft={{ tickSize: 0, tickPadding: 5 }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              enableLabel={false}
+              colors={highBarColors}
+              legends={compareHighKeys.length > 0 ? [{
+                dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 95,
+                itemWidth: 85, itemHeight: 16, symbolSize: 10,
+                itemTextColor: dark ? '#94a3b8' : '#64748b',
+              }] : []}
+            />
+          </ChartCard>
+        )}
+
+        {lowBarData.some(d => d.Låga > 0) && (
+          <ChartCard
+            title="Låga nivåer per månad"
+            height={300}
+            info={CHART_INFO['Låga nivåer per månad']}
+          >
+            <ResponsiveBar
+              data={lowBarData}
+              keys={lowBarKeys}
+              indexBy="month"
+              theme={theme}
+              groupMode={compareLowKeys.length > 0 ? 'grouped' : 'stacked'}
+              borderRadius={2}
+              padding={0.3}
+              margin={{ top: 10, right: compareLowKeys.length > 0 ? 100 : 10, bottom: 35, left: 55 }}
+              axisLeft={{ tickSize: 0, tickPadding: 5 }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              enableLabel={false}
+              colors={lowBarColors}
+              legends={compareLowKeys.length > 0 ? [{
+                dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 95,
+                itemWidth: 85, itemHeight: 16, symbolSize: 10,
+                itemTextColor: dark ? '#94a3b8' : '#64748b',
+              }] : []}
             />
           </ChartCard>
         )}
