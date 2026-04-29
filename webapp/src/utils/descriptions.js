@@ -405,11 +405,45 @@ export const KPI_INFO = {
   'eventlog_power':
     'Antal händelser relaterade till effektbegränsning (Power limitation). ' +
     'Indikerar att vakuumpumparna eller elsystemet inte kunnat leverera full kapacitet under perioden.',
+
+  // ---- Fjärr-responstid (KPI:er) ----
+  'Median responstid':
+    'Median av tid från att ett larm registrerats till att en operatör utfört "Alarm reset". ' +
+    'Mäter alltså bara fjärrhanteringen — inställelsetid på plats ingår inte. ' +
+    'Median används istället för medel eftersom enstaka mycket långa väntetider (t.ex. larm över helg) ' +
+    'annars skulle dominera värdet.\n\n' +
+    'Lågt medianvärde (sekunder/minuter) tyder på snabb operatörsrespons. ' +
+    'Höga värden (timmar/dygn) kan indikera att larm samlas på hög och kvitteras i klump, ' +
+    'eller att jouren inte agerar i tid.',
+
+  'Matchade larm':
+    'Antal larm som kunnat paras ihop med en efterföljande "Alarm reset". ' +
+    'Eftersom resetraderna i loggen saknar identifierare matchas varje larm med ' +
+    'närmast följande reset i tiden — flera larm kan därför dela samma reset. ' +
+    'Endast matchade larm ingår i medianberäkningen.',
+
+  'Omatchade larm':
+    'Larm som inte har någon efterföljande "Alarm reset" i loggen. Vanligen larm som ' +
+    'inträffat efter den sista reset-händelsen i perioden, eller perioder där reset saknas. ' +
+    'Om andelen är >30 % är matchningen osäker — då bör hela responstidsanalysen tolkas med försiktighet.',
+
+  'Resetar i loggen':
+    'Antal "Alarm reset"-händelser jämfört med totalt antal larm. ' +
+    'Resetraderna är generiska (utan identifierare), så en reset kvitterar normalt alla utestående larm samtidigt. ' +
+    'Att antalet reset är lägre än antalet larm är därför förväntat.',
 }
 
 // ---- Table-level descriptions ----
 
 export const TABLE_INFO = {
+  'Topp 10 längsta responstider':
+    'Enskilda larm med längst tid mellan registrering och "Alarm reset". ' +
+    'Använd listan för att hitta extremvärden som drar upp medelvärdet — ' +
+    'ofta är det larm som inträffat på kvällen/helgen och kvitterats först nästa arbetsdag. ' +
+    '\n\n' +
+    'Identifierare visar ventil-ID, sekvens eller komponent som larmet gällde, ' +
+    'där sådan information finns i larmtexten.',
+
   'Programstatistik':
     'Årsgenomsnitt per driftprogram (tömningsprogram, ventilationsprogram etc). ' +
     'Starter/mån visar antal programkörningar, Timmar/mån aktiv körtid, kWh/mån energiförbrukning. ' +
@@ -1037,4 +1071,25 @@ export const CHART_INFO = {
     'Jämför med den övergripande ventilanalysen för att bekräfta vilka delar av systemet ' +
     'som driver driftproblemen. En komponent med många Warning/Critical-händelser ' +
     'kan vara på väg att orsaka driftstopp.',
+
+  // ---- Fjärr-responstid (diagram/tabeller) ----
+  'Responstid per larmtyp':
+    'Median- och percentilvärden för fjärr-responstid uppdelat på larmets allvarlighetsgrad ' +
+    '(Generellt, Kritiskt, Nödstopp, Totalt stopp).' +
+    '\n\n' +
+    'Median är den typiska responstiden — hälften av larmen kvitteras snabbare, hälften långsammare. ' +
+    'p75/p90/p95 visar de långsammaste 25/10/5 %, vilket är ett bra mått på "värsta-fall"-prestanda. ' +
+    '\n\n' +
+    'Förväntan: Kritiska larm och nödstopp bör ha kortast responstid (operatörsåtgärd inom minuter). ' +
+    'Generella larm kan ha längre tid, t.ex. om de samlas och kvitteras i klump under arbetstid. ' +
+    'Om kritiska larm har högre p90 än generella är det en signal att utvärdera entreprenörens jourhantering.',
+
+  'Median responstid över tid':
+    'Trend för median fjärr-responstid över perioden — per dag eller vecka beroende på datavolym.' +
+    '\n\n' +
+    'En sjunkande linje tyder på förbättrad operatörsrespons. ' +
+    'En stigande linje kan bero på underbemanning, ändrade jourrutiner, eller en period med ' +
+    'många icke-akuta larm som lämnas okvitterade länge. ' +
+    '\n\n' +
+    'Enstaka toppar är normalt — t.ex. helger då larm samlas och kvitteras vid arbetsveckans start.',
 }

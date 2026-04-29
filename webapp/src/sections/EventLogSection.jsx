@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Activity, CalendarDays, Zap, Clock, AlertTriangle, BatteryWarning, X } from 'lucide-react'
+import { Activity, CalendarDays, Zap, Clock, AlertTriangle, BatteryWarning, X, Timer, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
-import { fmt, fmt1 } from '../utils/formatters'
+import { fmt, fmt1, pct } from '../utils/formatters'
+import { CHART_INFO, TABLE_INFO, KPI_INFO } from '../utils/descriptions'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -31,6 +32,15 @@ function severityStatusType(typ) {
 
 function toDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatDuration(seconds) {
+  if (seconds == null || isNaN(seconds)) return '–'
+  const s = Math.max(0, seconds)
+  if (s < 60) return `${fmt1(s)} s`
+  if (s < 3600) return `${fmt1(s / 60)} min`
+  if (s < 86400) return `${fmt1(s / 3600)} h`
+  return `${fmt1(s / 86400)} dygn`
 }
 
 function ErrorTimelineChart({ label, events, dark }) {
@@ -234,6 +244,140 @@ function ClickableValveTable({ columns, data, rawEvents, dark }) {
   )
 }
 
+function ResponseTimeBlock({ responseTimes, theme, dark }) {
+  const {
+    matchedCount,
+    unmatchedCount,
+    totalAlarms,
+    totalResets,
+    overallMedianSeconds,
+    perType,
+    longest,
+    timeline,
+    timelineGranularity,
+    unmatchedRatio,
+    warning,
+  } = responseTimes
+
+  const perTypeColumns = [
+    { key: 'typ', label: 'Typ', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
+    { key: 'count', label: 'Matchade' },
+    { key: 'medianSeconds', label: 'Median', render: (v) => formatDuration(v) },
+    { key: 'p75Seconds', label: 'p75', render: (v) => formatDuration(v) },
+    { key: 'p90Seconds', label: 'p90', render: (v) => formatDuration(v) },
+    { key: 'p95Seconds', label: 'p95', render: (v) => formatDuration(v) },
+  ]
+
+  const longestColumns = [
+    { key: 'tid', label: 'Larmtid', render: (v) => v instanceof Date ? v.toLocaleString('sv-SE') : String(v) },
+    { key: 'typ', label: 'Typ', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
+    { key: 'identifier', label: 'Identifierare', render: (v) => v ?? '–' },
+    { key: 'text', label: 'Larmtext' },
+    { key: 'seconds', label: 'Responstid', render: (v) => formatDuration(v) },
+  ]
+
+  const lineData = [{
+    id: 'Median responstid (min)',
+    data: timeline.map((d) => ({ x: d.period, y: Number(d.medianMinutes.toFixed(2)) })),
+  }]
+
+  const showChart = timeline.length >= 2 && matchedCount >= 10
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-3">
+        <Timer className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Fjärr-responstid</h3>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-3xl">
+        Tid från larm till "Alarm reset" (kvittering). Avser endast fjärrhantering — inställelsetid på plats ingår inte.
+        Eftersom resetraderna är generiska paras varje larm med närmast följande reset (samma reset kan kvittera flera larm).
+      </p>
+
+      {warning && (
+        <div className="flex items-start gap-2 mb-4 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50">
+          <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-orange-700 dark:text-orange-300">{warning}</p>
+        </div>
+      )}
+
+      <KpiGrid>
+        <KpiCard
+          label="Median responstid"
+          value={formatDuration(overallMedianSeconds)}
+          icon={Timer}
+          color="cyan"
+          info={KPI_INFO['Median responstid']}
+        />
+        <KpiCard
+          label="Matchade larm"
+          value={fmt(matchedCount)}
+          icon={Activity}
+          color="emerald"
+          info={KPI_INFO['Matchade larm']}
+        />
+        <KpiCard
+          label="Omatchade larm"
+          value={`${fmt(unmatchedCount)} (${pct(unmatchedRatio * 100, 0)})`}
+          icon={AlertCircle}
+          color={unmatchedRatio > 0.3 ? 'red' : 'orange'}
+          info={KPI_INFO['Omatchade larm']}
+        />
+        <KpiCard
+          label="Resetar i loggen"
+          value={`${fmt(totalResets)} av ${fmt(totalAlarms)} larm`}
+          icon={CalendarDays}
+          color="blue"
+          info={KPI_INFO['Resetar i loggen']}
+        />
+      </KpiGrid>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
+        {perType.length > 0 && (
+          <ChartCard title="Responstid per larmtyp" height={Math.max(150, 60 + perType.length * 42)} info={CHART_INFO['Responstid per larmtyp']}>
+            <div className="overflow-x-auto -m-2">
+              <DataTable columns={perTypeColumns} data={perType} maxRows={20} />
+            </div>
+          </ChartCard>
+        )}
+
+        {showChart && (
+          <ChartCard
+            title={timelineGranularity === 'week' ? 'Median responstid per vecka' : 'Median responstid per dag'}
+            height={Math.max(250, 60 + perType.length * 42)}
+            info={CHART_INFO['Median responstid över tid']}
+          >
+            <ResponsiveLine
+              data={lineData}
+              theme={theme}
+              colors={['#06b6d4']}
+              margin={{ top: 10, right: 30, bottom: 50, left: 60 }}
+              axisLeft={{ tickSize: 0, tickPadding: 5, legend: 'min', legendPosition: 'middle', legendOffset: -45 }}
+              axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
+              pointSize={5}
+              useMesh
+              curve="monotoneX"
+              enableArea
+              areaOpacity={0.1}
+              enableSlices="x"
+            />
+          </ChartCard>
+        )}
+      </div>
+
+      {longest.length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">
+            Topp 10 längsta responstider
+            <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-2">— enskilda larm med längst tid till kvittering</span>
+          </h4>
+          <DataTable columns={longestColumns} data={longest} maxRows={10} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function EventLogSection() {
   const { state } = useData()
   const { dark } = useTheme()
@@ -247,7 +391,7 @@ export default function EventLogSection() {
     </SectionWrapper>
   )
 
-  const { summary, sequences, alarms, componentHealth, timePatterns, powerEvents, operationMode } = eventLog
+  const { summary, sequences, alarms, componentHealth, timePatterns, powerEvents, operationMode, responseTimes } = eventLog
 
   // KPI values
   const criticalCount = (summary.byType?.['Kritiskt'] || 0) + (summary.byType?.['Nödstopp'] || 0) + (summary.byType?.['Totalt stopp'] || 0)
@@ -443,6 +587,11 @@ export default function EventLogSection() {
           />
         </ChartCard>
       </div>
+
+      {/* Fjärr-responstid */}
+      {responseTimes && (responseTimes.totalResets > 0 || responseTimes.totalAlarms > 0) && (
+        <ResponseTimeBlock responseTimes={responseTimes} theme={theme} dark={dark} />
+      )}
 
       {/* Top alarm messages — clickable */}
       {alarms.topMessages?.length > 0 && (
