@@ -324,8 +324,8 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
           info={KPI_INFO['Omatchade larm']}
         />
         <KpiCard
-          label="Resetar i loggen"
-          value={`${fmt(totalResets)} av ${fmt(totalAlarms)} larm`}
+          label="Resetar / larm"
+          value={`${fmt(totalResets)} / ${fmt(totalAlarms)}`}
           icon={CalendarDays}
           color="blue"
           info={KPI_INFO['Resetar i loggen']}
