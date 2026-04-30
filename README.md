@@ -119,9 +119,15 @@ Fristående React-app (Vite + Tailwind) som analyserar .xls-filer helt i webblä
 
 - Interaktiva diagram och tabeller med sortering och filtrering
 - KPI-kort med nyckeltal från anläggningssammanfattningen
-- Energi, ventiler, larm, grenar, fraktioner och manuella körningar
+- Energi, ventiler, larm, grenar, fraktioner, nivågivare och manuella körningar
+- **Nivågivaranalys** — tysta givare, höga/låga nivåer per månad, "ej tömt länge" per fraktion
+- **Larmkategorier** — stoppkategorier per månad och separat diagram per kategori (General/Critical/Total stop m.fl.)
+- **Manuell körning på djupet** — andel per fraktion, stigande trend per ventil, månadsspikar, korrelation mot larmkategorier, säsongsjämförelse sommar/vinter
+- **Fjärr-responstid** (när CSV-eventlogg laddas upp) — tid från larm till engagemang/login/manual mode/reset, median + medel + stddev per larmtyp, larmlogg med flaggning av avvikande svartider (>p90 eller >μ+2σ)
+- **Jämförelseläge** — välj flera anläggningar parallellt och se överlappande grafer
 - Rekommendationer med prioritering
 - **PDF-export** — Exportera hela analysen till en formaterad PDF-rapport med sidhuvud, sidfot, förklaringar och verktygsinfo. All rendering sker i webbläsaren via html2canvas + jsPDF.
+- **Delning via PocketBase** (valfritt) — ladda upp originalfiler till en lokal PocketBase-instans för senare jämförelse mellan anläggningar. List/visa/skapa publika; ändring/radering kräver superuser.
 
 ### Lokal utveckling
 
@@ -130,6 +136,29 @@ cd webapp
 npm install
 npm run dev                   # Startar dev-server
 npm run build                 # Bygger till webapp/dist/
+```
+
+### Valfritt: PocketBase-backend för delning och jämförelse
+
+Webappen kan köras helt fristående eller mot en lokal PocketBase-instans som lagrar originalfiler för senare jämförelse mellan anläggningar.
+
+```bash
+# Hämta pocketbase-binär från https://pocketbase.io/docs/
+/tmp/pocketbase serve --http=0.0.0.0:8001 \
+  --dir=./webapp/pb_data \
+  --migrationsDir=./webapp/pb_migrations \
+  --publicDir=./webapp/pb_public      # symlink → dist; servar både API och frontend
+```
+
+PocketBase serverar då både API och den byggda webappen på `:8001`. Migrations under `webapp/pb_migrations/` skapar tabellerna automatiskt vid första start. Sätt en superuser via Admin-UI:t på `:8001/_/` för att kunna redigera/radera poster.
+
+### End-to-end-verifiering
+
+För automatiserad UI-verifiering används [`agent-browser`](https://github.com/vercel-labs/agent-browser):
+
+```bash
+npm install -g agent-browser
+agent-browser install --with-deps
 ```
 
 ### Deploy till Cloudflare Pages
@@ -181,6 +210,12 @@ pythonapp/                Python-analyskedja
   run.sh                  Kör alla analyssteg i rätt ordning
   requirements.txt        Python-beroenden
 webapp/                   React-app (Vite + Tailwind, Cloudflare Pages)
-CLAUDE.md                 Regelverk för AI-assisterad datahantering
+  src/analysis/           Analyslogik per sektion (energi, ventiler, larm, ...)
+  src/parsers/            XLS/CSV-parsning
+  src/sections/           UI-sektioner (Dashboard, Energi, Ventiler, ...)
+  src/components/common/  Återanvändbara komponenter (KpiCard, ChartCard, ...)
+  src/utils/              Formatters, beskrivningar, ventil→fraktion-mappning
+  pb_migrations/          PocketBase-migrationer (collections + regler)
+CLAUDE.md                 Regelverk för AI-assisterad datahantering + arkitekturguide
 LICENSE                   CC BY 4.0
 ```
