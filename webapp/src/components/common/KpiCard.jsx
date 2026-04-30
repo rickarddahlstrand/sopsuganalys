@@ -23,9 +23,9 @@ export default function KpiCard({ label, value, delta, icon: Icon, color = 'emer
             <p className={`text-sm text-slate-500 dark:text-slate-400 ${printMode ? '' : 'truncate'}`}>{label}</p>
             {info && <InfoButton text={info} size={13} />}
           </span>
-          <p className={`text-2xl font-bold mt-1 ${printMode ? '' : 'truncate'}`}>{value}</p>
+          <p className={`text-xl md:text-2xl font-bold mt-1 ${printMode ? '' : 'break-words'}`}>{value}</p>
           {compareValue != null && (
-            <p className={`text-sm mt-0.5 text-blue-500 dark:text-blue-400 ${printMode ? '' : 'truncate'}`}>
+            <p className={`text-sm mt-0.5 text-blue-500 dark:text-blue-400 ${printMode ? '' : 'break-words'}`}>
               vs {compareValue}
             </p>
           )}

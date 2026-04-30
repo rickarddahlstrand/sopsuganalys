@@ -83,6 +83,8 @@ function guessUnit(key) {
   if (low.includes('hour') || low.includes('time')) return 'h'
   if (low.includes('%') || low.includes('percent')) return '%'
   if (low.includes('transport')) return 'st'
+  if (low.includes('diameter')) return 'mm'
+  if (low.includes('distance') || low.includes('length')) return 'm'
   return ''
 }
 

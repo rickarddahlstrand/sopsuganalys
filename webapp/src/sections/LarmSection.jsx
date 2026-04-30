@@ -170,12 +170,12 @@ export default function LarmSection() {
             groupMode="grouped"
             borderRadius={3}
             padding={0.3}
-            margin={{ top: 10, right: 100, bottom: 35, left: 55 }}
+            margin={{ top: 10, right: 170, bottom: 35, left: 55 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
             colors={['#ef4444', '#94a3b8']}
-            legends={[{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 100, itemWidth: 90, itemHeight: 18, symbolSize: 12, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
+            legends={[{ dataFrom: 'keys', anchor: 'right', direction: 'column', translateX: 165, itemWidth: 160, itemHeight: 18, symbolSize: 12, itemTextColor: dark ? '#94a3b8' : '#64748b' }]}
           />
         </ChartCard>
 

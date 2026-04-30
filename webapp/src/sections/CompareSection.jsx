@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { GitCompare, Loader2, AlertCircle, CheckSquare, Square, ArrowLeft, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { listFacilities, getPb } from '../utils/pocketbase'
+import { listFacilities, getPb, translatePbError } from '../utils/pocketbase'
 import { loadFacilityAnalysis } from '../utils/loadFacility'
 import { fmt, pct } from '../utils/formatters'
 import SectionWrapper from '../components/common/SectionWrapper'
@@ -34,7 +34,8 @@ export default function CompareSection() {
         if (!cancelled) setData(result)
       })
       .catch(err => {
-        if (!cancelled) setError(err.message)
+        console.error('Failed to list facilities:', err)
+        if (!cancelled) setError(translatePbError(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

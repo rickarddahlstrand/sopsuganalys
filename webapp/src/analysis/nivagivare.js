@@ -71,7 +71,7 @@ export function analyzeNivagivare(parsedFiles) {
     .sort((a, b) => b.missingMonths - a.missingMonths)
 
   const suspects = valveRows
-    .filter(v => v.suspicionScore > 0)
+    .filter(v => v.isSuspect)
     .sort((a, b) => b.suspicionScore - a.suspicionScore)
 
   const monthlyLevelErrors = buildMonthlyErrorSeries(parsedFiles)
@@ -119,7 +119,7 @@ export function analyzeNivagivare(parsedFiles) {
     const b = branchMap[v.branch]
     b.valveCount++
     if (v.silent) b.silent++
-    if (v.suspicionScore > 0) b.suspects++
+    if (v.isSuspect) b.suspects++
     b.levelErrors += v.totalLevelErrors
   }
   const branchSummary = Object.values(branchMap)
@@ -245,6 +245,18 @@ function buildValveRow(v, totalMonths) {
   if (missingMonths > 0 && totalMonths >= 3) suspicionScore += missingMonths * 5
   if (zeroAvailMonths > 0) suspicionScore += zeroAvailMonths * 10
 
+  // Antal distinkta indikatorer som ventilen utlöst — minst 2 krävs för att
+  // klassas som misstänkt (annars blir nästan alla ventiler flaggade).
+  let indicatorCount = 0
+  if (silent) indicatorCount++
+  if (totalLevelErrors > 0) indicatorCount++
+  if (highLevelScore > 0 && !silent) indicatorCount++
+  if (lowLevelScore > 0) indicatorCount++
+  if (stuckScore > 0) indicatorCount++
+  if (missingMonths > 0 && totalMonths >= 3) indicatorCount++
+  if (zeroAvailMonths > 0) indicatorCount++
+  const isSuspect = indicatorCount >= 2
+
   const manualPct = totalCmd > 0 ? round1(totalMan / totalCmd * 100) : 0
 
   // Sammanfattning av misstankar för UI
@@ -279,6 +291,8 @@ function buildValveRow(v, totalMonths) {
     lowLevelScore,
     stuckScore,
     suspicionScore,
+    indicatorCount,
+    isSuspect,
     reasons: reasons.join(', '),
     reasonList: reasons,
   }

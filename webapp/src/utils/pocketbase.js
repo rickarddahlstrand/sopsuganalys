@@ -12,6 +12,56 @@ export function getPb() {
   return pb
 }
 
+/**
+ * Översätter vanliga PocketBase/HTTP-felmeddelanden till svensk användartext.
+ * Fungerar både på `Error`-objekt och rena strängar.
+ * Tekniska detaljer (originalmeddelande/status) loggas separat via console.error.
+ */
+export function translatePbError(err) {
+  if (!err) return 'Okänt fel.'
+  const raw = typeof err === 'string' ? err : (err.message || '')
+  const lower = raw.toLowerCase()
+  const status = typeof err === 'object' ? err.status : undefined
+
+  // Nätverksfel / abort
+  if (lower.includes('failed to fetch') || lower.includes('networkerror') ||
+      lower.includes('network error') || lower.includes('load failed')) {
+    return 'Servern svarade inte. Kontrollera att PocketBase är tillgänglig.'
+  }
+  if (lower.includes('aborted') || lower.includes('autocancelled')) {
+    return 'Anropet avbröts.'
+  }
+
+  // PocketBase generiska meddelanden
+  if (lower.includes('something went wrong while processing your request')) {
+    if (status === 0 || status === undefined) {
+      return 'Servern svarade inte. Kontrollera att PocketBase är tillgänglig.'
+    }
+    if (status === 401 || status === 403) {
+      return 'Behörighet saknas för att hämta data.'
+    }
+    if (status === 404) {
+      return 'Resursen hittades inte.'
+    }
+    if (status >= 500) {
+      return 'Serverfel. Försök igen senare.'
+    }
+    return 'Anslutningen misslyckades.'
+  }
+
+  // Statuskodbaserade fall
+  if (status === 0) return 'Servern svarade inte. Kontrollera att PocketBase är tillgänglig.'
+  if (status === 401 || status === 403) return 'Behörighet saknas för att hämta data.'
+  if (status === 404) return 'Resursen hittades inte.'
+  if (typeof status === 'number' && status >= 500) return 'Serverfel. Försök igen senare.'
+
+  // Returnera ursprunglig text om den redan ser svensk ut, annars en generisk svensk fallback
+  if (/[åäöÅÄÖ]/.test(raw) || raw === '') {
+    return raw || 'Anslutningen misslyckades.'
+  }
+  return 'Anslutningen misslyckades.'
+}
+
 // --- facility_uploads collection (original files + summary KPI) ---
 
 const FACILITY_COLLECTION = 'facility_uploads'

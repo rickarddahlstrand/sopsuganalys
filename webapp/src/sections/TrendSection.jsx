@@ -110,7 +110,8 @@ export default function TrendSection() {
 
   // KPI values
   const trendClass = ft.energi?.trendClass || '–'
-  const rSquared = ft.energi?.rSquared != null ? ft.energi.rSquared.toFixed(3) : '–'
+  const r2Raw = ft.energi?.r2 ?? ft.energi?.rSquared
+  const rSquared = r2Raw != null && !isNaN(r2Raw) ? fmt2(r2Raw) : '–'
   // Get correlation from energi_vs_tömningar pair
   const energiCorr = t.correlations?.['energi_vs_tömningar']
   const pearsonR = energiCorr?.pearsonR != null && !isNaN(energiCorr.pearsonR) ? energiCorr.pearsonR.toFixed(3) : (corrRows[0]?.pearsonR || '–')

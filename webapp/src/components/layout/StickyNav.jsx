@@ -65,12 +65,12 @@ export default function StickyNav({ sections }) {
             <div className="h-5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 hidden sm:block" />
 
             {/* Desktop navigation */}
-            <div className="hidden sm:flex gap-0.5 flex-wrap flex-1">
+            <div className="hidden sm:flex gap-0 flex-wrap flex-1">
               {sections.map(s => (
                 <button
                   key={s.id}
                   onClick={() => scrollTo(s.id)}
-                  className={`px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                  className={`px-1.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                     activeId === s.id
                       ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'

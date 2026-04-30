@@ -635,7 +635,7 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
 
       <KpiGrid>
         <KpiCard
-          label="Median tid till engagemang"
+          label="Median engagemang"
           value={formatDuration(overall.engagement?.medianSeconds ?? 0)}
           icon={Timer}
           color="cyan"
@@ -643,7 +643,7 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
           compareValue={`${fmt(matchCounts.engagement)} av ${fmt(totalAlarms)} larm`}
         />
         <KpiCard
-          label="Median tid till login"
+          label="Median login"
           value={formatDuration(overall.login?.medianSeconds ?? 0)}
           icon={LogIn}
           color="emerald"
@@ -651,7 +651,7 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
           compareValue={`${fmt(matchCounts.login)} av ${fmt(totalAlarms)} larm`}
         />
         <KpiCard
-          label="Median tid till manual mode"
+          label="Median manual mode"
           value={formatDuration(overall.manual?.medianSeconds ?? 0)}
           icon={Hand}
           color="purple"
@@ -659,7 +659,7 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
           compareValue={`${fmt(matchCounts.manual)} av ${fmt(totalAlarms)} larm`}
         />
         <KpiCard
-          label="Median tid till reset"
+          label="Median reset"
           value={formatDuration(overall.reset?.medianSeconds ?? 0)}
           icon={RotateCcw}
           color="orange"

@@ -204,7 +204,7 @@ export default function NivagivareSection() {
 
       <KpiGrid>
         <KpiCard
-          label="Ventiler med givare"
+          label="Givare totalt"
           value={fmt(n.totalValves)}
           icon={Gauge}
           color="blue"

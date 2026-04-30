@@ -27,7 +27,11 @@ const manualTrendLine = createTrendLineLayer('Manuella', '#7c3aed')
 const FRACTION_COLORS = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
 
 function applySortBar(data, valueKey, sortMode) {
-  if (sortMode === 'default') return data
+  if (sortMode === 'default') {
+    // För horisontell bar i nivo renderas index 0 längst ned. Vänd ordningen
+    // så att högsta värdet visas högst upp (matchar "Topp"-rubriken).
+    return [...data].reverse()
+  }
   const sorted = [...data]
   sorted.sort((a, b) => sortMode === 'asc' ? a[valueKey] - b[valueKey] : b[valueKey] - a[valueKey])
   return sorted

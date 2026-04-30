@@ -79,7 +79,7 @@ export default function EnergiSection() {
             groupMode={hasCompareEnergy ? 'grouped' : 'stacked'}
             borderRadius={4}
             padding={0.3}
-            margin={{ top: 10, right: hasCompareEnergy ? 80 : 10, bottom: 30, left: 60 }}
+            margin={{ top: 10, right: hasCompareEnergy ? 80 : 10, bottom: 45, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
@@ -97,7 +97,7 @@ export default function EnergiSection() {
             groupMode="stacked"
             borderRadius={2}
             padding={0.3}
-            margin={{ top: 10, right: 80, bottom: 30, left: 60 }}
+            margin={{ top: 10, right: 80, bottom: 45, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             enableLabel={false}
@@ -111,7 +111,7 @@ export default function EnergiSection() {
             data={driftData}
             theme={theme}
             colors={compareMode && driftData.length > 1 ? ['#f97316', ...COMPARE_COLORS.slice(0, driftData.length - 1)] : ['#f97316']}
-            margin={{ top: 10, right: compareMode && driftData.length > 1 ? 80 : 10, bottom: 30, left: 60 }}
+            margin={{ top: 10, right: compareMode && driftData.length > 1 ? 80 : 10, bottom: 45, left: 60 }}
             axisLeft={{ tickSize: 0, tickPadding: 5 }}
             axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
             pointSize={8}

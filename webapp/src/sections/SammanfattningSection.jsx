@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
 import { translateKpiLabel } from '../utils/colors'
 import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
+import { fmt, fmt2 } from '../utils/formatters'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -18,6 +19,12 @@ import { ResponsiveBar } from '@nivo/bar'
 const kpiTrendLine = createTrendLineLayer('value', '#1e40af')
 
 const DEFAULT_CHART_LIMIT = 4
+
+function formatKpiValue(n) {
+  if (n == null || isNaN(n)) return '–'
+  const num = Number(n)
+  return Number.isInteger(num) ? fmt(num) : fmt2(num)
+}
 
 export default function SammanfattningSection() {
   const { state } = useData()
@@ -41,15 +48,16 @@ export default function SammanfattningSection() {
       <KpiGrid>
         {top6.map(kpi => {
           const cKpi = compareMode && csamm?.top6?.find(c => c.key === kpi.key)
+          const unitSuffix = kpi.unit ? ` ${kpi.unit}` : ''
           return (
             <KpiCard
               key={kpi.key}
               label={translateKpiLabel(kpi.key)}
-              value={`${kpi.mean} ${kpi.unit}`}
+              value={`${formatKpiValue(kpi.mean)}${unitSuffix}`}
               icon={FileText}
               color="blue"
               info={KPI_INFO['Sammanfattning KPI']}
-              compareValue={cKpi ? `${cKpi.mean} ${cKpi.unit}` : undefined}
+              compareValue={cKpi ? `${formatKpiValue(cKpi.mean)}${cKpi.unit ? ` ${cKpi.unit}` : ''}` : undefined}
             />
           )
         })}
@@ -97,9 +105,9 @@ export default function SammanfattningSection() {
           columns={[
             { key: 'key', label: 'KPI', render: v => translateKpiLabel(v) },
             { key: 'type', label: 'Typ', render: v => v === 'numeric' ? 'Numerisk' : 'Text' },
-            { key: 'mean', label: 'Medel', render: v => v != null ? v : '–' },
-            { key: 'min', label: 'Min', render: v => v != null ? v : '–' },
-            { key: 'max', label: 'Max', render: v => v != null ? v : '–' },
+            { key: 'mean', label: 'Medel', render: v => formatKpiValue(v) },
+            { key: 'min', label: 'Min', render: v => formatKpiValue(v) },
+            { key: 'max', label: 'Max', render: v => formatKpiValue(v) },
             { key: 'unit', label: 'Enhet' },
           ]}
           data={samm.kpis}
