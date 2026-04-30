@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Activity, CalendarDays, Zap, Clock, AlertTriangle, BatteryWarning, X, Timer, AlertCircle, LogIn, Hand, RotateCcw } from 'lucide-react'
+import { Activity, CalendarDays, Zap, Clock, AlertTriangle, BatteryWarning, X, Timer, AlertCircle, LogIn, Hand, RotateCcw, FilterX } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
@@ -258,6 +258,184 @@ const FOLLOWUP_KIND_COLORS = {
   reset: '#f97316',
 }
 
+const ALARM_TYPE_ORDER = ['Generellt', 'Kritiskt', 'Nödstopp', 'Totalt stopp']
+
+function formatDayShort(d) {
+  const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
+  return `${d.getDate()} ${months[d.getMonth()]}`
+}
+
+function LarmloggFilter({
+  alarmLog,
+  filterDays,
+  setFilterDays,
+  filterTypes,
+  setFilterTypes,
+  onlyFlagged,
+  setOnlyFlagged,
+  visibleCount,
+  totalCount,
+}) {
+  const dayStats = useMemo(() => {
+    const map = new Map()
+    for (const row of alarmLog) {
+      const t = row.tid
+      if (!(t instanceof Date)) continue
+      const key = toDateKey(t)
+      const entry = map.get(key) || { key, date: new Date(t.getFullYear(), t.getMonth(), t.getDate()), count: 0, flagged: 0 }
+      entry.count += 1
+      if (row.flagged) entry.flagged += 1
+      map.set(key, entry)
+    }
+    return Array.from(map.values()).sort((a, b) => a.date - b.date)
+  }, [alarmLog])
+
+  const typeStats = useMemo(() => {
+    const counts = {}
+    for (const t of ALARM_TYPE_ORDER) counts[t] = 0
+    for (const row of alarmLog) {
+      if (row.typ in counts) counts[row.typ] += 1
+      else counts[row.typ] = (counts[row.typ] || 0) + 1
+    }
+    return counts
+  }, [alarmLog])
+
+  const maxFlaggedPerDay = useMemo(() => {
+    let m = 0
+    for (const d of dayStats) if (d.flagged > m) m = d.flagged
+    return m
+  }, [dayStats])
+
+  const showDayStrip = dayStats.length > 1 && totalCount >= 30
+  const allDaysSameCount = dayStats.length > 0 && dayStats.every(d => d.count === dayStats[0].count)
+
+  const toggleDay = (key, additive) => {
+    setFilterDays(prev => {
+      const has = prev.includes(key)
+      if (additive) {
+        return has ? prev.filter(k => k !== key) : [...prev, key]
+      }
+      if (has && prev.length === 1) return []
+      return [key]
+    })
+  }
+
+  const toggleType = (typ) => {
+    setFilterTypes(prev => {
+      if (prev.includes(typ)) return prev.filter(t => t !== typ)
+      return [...prev, typ]
+    })
+  }
+
+  const hasActiveFilters = filterDays.length > 0 || filterTypes.length < ALARM_TYPE_ORDER.length || onlyFlagged
+  const clearAll = () => {
+    setFilterDays([])
+    setFilterTypes([...ALARM_TYPE_ORDER])
+    setOnlyFlagged(false)
+  }
+
+  const flaggedColorFor = (flagged) => {
+    if (allDaysSameCount || maxFlaggedPerDay === 0 || flagged === 0) return null
+    const intensity = flagged / maxFlaggedPerDay
+    if (intensity >= 0.66) return 'bg-red-500'
+    if (intensity >= 0.33) return 'bg-red-400'
+    return 'bg-red-300'
+  }
+
+  return (
+    <div className="mb-3 space-y-3">
+      {showDayStrip && (
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Filtrera per dag</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">Ctrl/Cmd-klick för flera dagar</span>
+          </div>
+          <div className="overflow-x-auto pb-1 -mx-1 px-1">
+            <div className="flex gap-1.5 min-w-min">
+              {dayStats.map(d => {
+                const active = filterDays.includes(d.key)
+                const dot = flaggedColorFor(d.flagged)
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={(e) => toggleDay(d.key, e.ctrlKey || e.metaKey)}
+                    className={`relative flex-shrink-0 px-2.5 py-1.5 rounded-md text-xs leading-tight border transition-colors text-left whitespace-nowrap ${
+                      active
+                        ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                        : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                    }`}
+                    title={`${d.date.toLocaleDateString('sv-SE')} — ${d.count} larm${d.flagged > 0 ? `, ${d.flagged} avvikande` : ''}`}
+                  >
+                    {dot && !active && (
+                      <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${dot}`} />
+                    )}
+                    <div className="font-medium">{formatDayShort(d.date)}</div>
+                    <div className={`text-[10px] ${active ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>
+                      {d.count} larm{d.flagged > 0 ? ` · ${d.flagged}!` : ''}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">Typ:</span>
+          {ALARM_TYPE_ORDER.map(typ => {
+            const active = filterTypes.includes(typ)
+            const count = typeStats[typ] ?? 0
+            const color = severityColors[typ] || '#94a3b8'
+            return (
+              <button
+                key={typ}
+                type="button"
+                onClick={() => toggleType(typ)}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs border transition-colors ${
+                  active
+                    ? 'bg-slate-100 dark:bg-slate-700/60 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                    : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 line-through'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: active ? color : 'transparent', borderColor: color, borderWidth: 1, borderStyle: 'solid' }} />
+                {typ} <span className="text-slate-400 dark:text-slate-500">({count})</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={onlyFlagged}
+            onChange={(e) => setOnlyFlagged(e.target.checked)}
+            className="rounded border-slate-300 dark:border-slate-600 text-blue-500 focus:ring-blue-500"
+          />
+          Endast avvikande
+        </label>
+
+        <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
+          Visar <strong>{fmt(visibleCount)}</strong> av <strong>{fmt(totalCount)}</strong> larm
+        </span>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            <FilterX className="w-3.5 h-3.5" />
+            Rensa alla filter
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ResponseTimeBlock({ responseTimes, theme, dark }) {
   const {
     matchedCount,
@@ -279,6 +457,24 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
   } = responseTimes
 
   const [showDetailedPerType, setShowDetailedPerType] = useState(false)
+  const [filterDays, setFilterDays] = useState([])
+  const [filterTypes, setFilterTypes] = useState([...ALARM_TYPE_ORDER])
+  const [onlyFlagged, setOnlyFlagged] = useState(false)
+
+  const filteredAlarmLog = useMemo(() => {
+    if (!alarmLog) return []
+    return alarmLog.filter(row => {
+      if (onlyFlagged && !row.flagged) return false
+      if (filterTypes.length < ALARM_TYPE_ORDER.length) {
+        if (!filterTypes.includes(row.typ)) return false
+      }
+      if (filterDays.length > 0) {
+        if (!(row.tid instanceof Date)) return false
+        if (!filterDays.includes(toDateKey(row.tid))) return false
+      }
+      return true
+    })
+  }, [alarmLog, filterDays, filterTypes, onlyFlagged])
 
   const ratio = (n) => (totalAlarms > 0 ? n / totalAlarms : 0)
 
@@ -370,11 +566,12 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
     {
       key: 'text',
       label: 'Text',
-      // Allow the text column to wrap so the row stays readable when the user
-      // expands to all rows. The wrapper class overrides DataTable's default
-      // `whitespace-nowrap` per-cell.
-      cellClassName: 'whitespace-normal break-words min-w-[220px]',
-      render: (v) => <span title={v}>{truncate(v, 80)}</span>,
+      cellClassName: 'whitespace-nowrap',
+      render: (v) => (
+        <span title={v} className="block truncate max-w-[480px]">
+          {truncate(v, 80)}
+        </span>
+      ),
     },
     { key: 'engagementSeconds', label: 'Engagemang', render: (v, row) => renderTime(v, row.flags?.engagement) },
     { key: 'loginSeconds', label: 'Login', render: (v, row) => renderTime(v, row.flags?.login) },
@@ -561,12 +758,21 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
                 <span className="ml-2 text-slate-400">— rader med röd bakgrund överstiger p90 eller medel + 2σ för sin mätpunkt</span>
               )}
             </div>
-            {/* Limit height so "Visa alla" doesn't blow up the page on
-                CSV-loggar med tusentals larm — table scrolls internally. */}
-            <div className="max-h-[600px] overflow-y-auto rounded-lg">
+            <LarmloggFilter
+              alarmLog={alarmLog}
+              filterDays={filterDays}
+              setFilterDays={setFilterDays}
+              filterTypes={filterTypes}
+              setFilterTypes={setFilterTypes}
+              onlyFlagged={onlyFlagged}
+              setOnlyFlagged={setOnlyFlagged}
+              visibleCount={filteredAlarmLog.length}
+              totalCount={alarmLog.length}
+            />
+            <div className="max-h-[600px] overflow-y-auto overflow-x-auto rounded-lg">
               <DataTable
                 columns={alarmLogColumns}
-                data={alarmLog}
+                data={filteredAlarmLog}
                 maxRows={25}
                 defaultSort={{ key: 'engagementSeconds', dir: 'desc' }}
                 rowClassName={(row) => row.flagged ? 'bg-red-50 dark:bg-red-950/30 hover:bg-red-100/60 dark:hover:bg-red-900/40' : ''}
