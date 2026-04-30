@@ -407,24 +407,41 @@ export const KPI_INFO = {
     'Indikerar att vakuumpumparna eller elsystemet inte kunnat leverera full kapacitet under perioden.',
 
   // ---- Fjärr-responstid (KPI:er) ----
+  'Median tid till engagemang':
+    'Median av tid från larm till första uppföljande operatörshändelse — den tidigaste av ' +
+    'login ("Remote connection 1"), manual mode ("Change to manual operation mode") eller "Alarm reset". ' +
+    'Mäter alltså hur snabbt en operatör över huvud taget reagerar på larmet (fjärr, ej inställelsetid på plats). ' +
+    '\n\n' +
+    'Median används istället för medelvärde eftersom enstaka mycket långa väntetider (t.ex. larm över helg) ' +
+    'annars skulle dominera värdet. Värdet i parentes visar hur många larm som hade någon uppföljning ' +
+    'inom 7 dygn — siffran beräknas på de matchade larmen.',
+
+  'Median tid till login':
+    'Median av tid från larm till första "Remote connection 1" (operatören kopplar upp via fjärr). ' +
+    'Detta är det tidigaste mätbara tecknet på att någon engagerat sig i larmet. ' +
+    'Värdet i parentes visar hur många larm som hade en login inom 7 dygn.',
+
+  'Median tid till manual mode':
+    'Median av tid från larm till första "Change to manual operation mode" (operatören tar manuell kontroll). ' +
+    'Visar när operatören övergår från observation till aktiv åtgärd. ' +
+    'Alla larm leder inte till manuell kontroll — värdet i parentes visar antal matchade larm.',
+
+  'Median tid till reset':
+    'Median av tid från larm till första "Alarm reset" (kvittering / åtgärd klar). ' +
+    'Resetraderna är generiska och kvitterar oftast flera utestående larm samtidigt; ' +
+    'detta är därför ofta sista steget i operatörens hantering. ' +
+    'Värdet i parentes visar antal larm med tillhörande reset inom 7 dygn.',
+
+  // Behåller tidigare nycklar för bakåtkompatibilitet (oanvända i nya UI:t).
   'Median responstid':
-    'Median av tid från att ett larm registrerats till att en operatör utfört "Alarm reset". ' +
-    'Mäter alltså bara fjärrhanteringen — inställelsetid på plats ingår inte. ' +
-    'Median används istället för medel eftersom enstaka mycket långa väntetider (t.ex. larm över helg) ' +
-    'annars skulle dominera värdet.\n\n' +
-    'Lågt medianvärde (sekunder/minuter) tyder på snabb operatörsrespons. ' +
-    'Höga värden (timmar/dygn) kan indikera att larm samlas på hög och kvitteras i klump, ' +
-    'eller att jouren inte agerar i tid.',
+    'Median av tid från larm till "Alarm reset". Ersatt av "Median tid till engagemang" och ' +
+    'tre separata mätpunkter (login / manual / reset).',
 
   'Matchade larm':
-    'Antal larm som kunnat paras ihop med en efterföljande "Alarm reset". ' +
-    'Eftersom resetraderna i loggen saknar identifierare matchas varje larm med ' +
-    'närmast följande reset i tiden — flera larm kan därför dela samma reset. ' +
-    'Endast matchade larm ingår i medianberäkningen.',
+    'Antal larm som kunnat paras ihop med en uppföljande operatörshändelse inom analysfönstret (7 dygn).',
 
   'Omatchade larm':
-    'Larm som inte har någon efterföljande "Alarm reset" i loggen. Vanligen larm som ' +
-    'inträffat efter den sista reset-händelsen i perioden, eller perioder där reset saknas. ' +
+    'Larm utan någon uppföljande operatörshändelse (login, manual mode eller reset) inom 7 dygn. ' +
     'Om andelen är >30 % är matchningen osäker — då bör hela responstidsanalysen tolkas med försiktighet.',
 
   'Resetar i loggen':
@@ -437,12 +454,25 @@ export const KPI_INFO = {
 
 export const TABLE_INFO = {
   'Topp 10 längsta responstider':
-    'Enskilda larm med längst tid mellan registrering och "Alarm reset". ' +
-    'Använd listan för att hitta extremvärden som drar upp medelvärdet — ' +
-    'ofta är det larm som inträffat på kvällen/helgen och kvitterats först nästa arbetsdag. ' +
+    'Enskilda larm med längst tid till första uppföljande operatörshändelse. ' +
+    'Tabellen visar både engagemang (första reaktion) och reset (kvittering) per larm — ' +
+    'använd skillnaden mellan dem för att se om operatören reagerar snabbt men dröjer med kvittering. ' +
+    'Saknas värdet för en kolumn finns ingen matchande händelse i loggen inom 7 dygn. ' +
     '\n\n' +
+    'Använd listan för att hitta extremvärden som drar upp medianvärdet — ' +
+    'ofta är det larm som inträffat på kvällen/helgen och hanterats först nästa arbetsdag. ' +
     'Identifierare visar ventil-ID, sekvens eller komponent som larmet gällde, ' +
     'där sådan information finns i larmtexten.',
+
+  'Larmlogg med svartider':
+    'Komplett lista över alla larm i perioden med svartiden till varje mätpunkt ' +
+    '(Engagemang, Login, Manual, Reset). Avvikande värden flaggas med röd bakgrund — ' +
+    'en rad markeras om någon av dess svartider överstiger antingen p90 eller medel + 2σ ' +
+    'för den aktuella mätpunkten. Ett saknat värde betyder att ingen matchande uppföljning hittades inom 7 dygn. ' +
+    '\n\n' +
+    'Tabellen sorteras default på engagemang fallande så att de längsta svartiderna syns först. ' +
+    'Vid färre än 10 larm i perioden skippas flaggning (för få datapunkter). ' +
+    'Klicka kolumnrubrikerna för att sortera om — användbart för att hitta avvikare per mätpunkt.',
 
   'Programstatistik':
     'Årsgenomsnitt per driftprogram (tömningsprogram, ventilationsprogram etc). ' +
@@ -1074,22 +1104,24 @@ export const CHART_INFO = {
 
   // ---- Fjärr-responstid (diagram/tabeller) ----
   'Responstid per larmtyp':
-    'Median- och percentilvärden för fjärr-responstid uppdelat på larmets allvarlighetsgrad ' +
-    '(Generellt, Kritiskt, Nödstopp, Totalt stopp).' +
+    'Medianvärden för fjärr-responstid uppdelat på larmets allvarlighetsgrad ' +
+    '(Generellt, Kritiskt, Nödstopp, Totalt stopp), med en kolumn per mätpunkt: ' +
+    'Engagemang (första reaktion), Login (operatör online), Manual (manuell kontroll) och Reset (kvittering). ' +
+    'Siffran i parentes är antal larm i den larmtypen som hade en matchning av just den mätpunkten. ' +
     '\n\n' +
-    'Median är den typiska responstiden — hälften av larmen kvitteras snabbare, hälften långsammare. ' +
-    'p75/p90/p95 visar de långsammaste 25/10/5 %, vilket är ett bra mått på "värsta-fall"-prestanda. ' +
+    'För p75/p90/p95 samt medel och standardavvikelse (σ), expandera "Visa detaljerad statistik". ' +
+    'Stort σ jämfört med medianen indikerar hög spridning — enstaka mycket långa väntetider drar upp medel men inte median. ' +
     '\n\n' +
-    'Förväntan: Kritiska larm och nödstopp bör ha kortast responstid (operatörsåtgärd inom minuter). ' +
-    'Generella larm kan ha längre tid, t.ex. om de samlas och kvitteras i klump under arbetstid. ' +
-    'Om kritiska larm har högre p90 än generella är det en signal att utvärdera entreprenörens jourhantering.',
+    'Förväntan: Kritiska larm och nödstopp bör ha kortast tid till engagemang. ' +
+    'Om kritiska larm har högre värden än generella är det en signal att utvärdera jourhanteringen.',
 
   'Median responstid över tid':
-    'Trend för median fjärr-responstid över perioden — per dag eller vecka beroende på datavolym.' +
+    'Trend för median fjärr-responstid per dag eller vecka, med en linje per mätpunkt ' +
+    '(engagemang, login, manual, reset). ' +
     '\n\n' +
-    'En sjunkande linje tyder på förbättrad operatörsrespons. ' +
-    'En stigande linje kan bero på underbemanning, ändrade jourrutiner, eller en period med ' +
-    'många icke-akuta larm som lämnas okvitterade länge. ' +
+    'Linjerna ligger normalt nära varandra; om reset-linjen ligger märkbart över de andra ' +
+    'innebär det att operatören engagerar sig snabbt men kvitterar långsamt. ' +
+    'Om manual-linjen sticker iväg uppåt betyder det att aktiv manuell åtgärd dröjer även när operatör är online.' +
     '\n\n' +
-    'Enstaka toppar är normalt — t.ex. helger då larm samlas och kvitteras vid arbetsveckans start.',
+    'Enstaka toppar är normalt — t.ex. helger då larm samlas och hanteras vid arbetsveckans start.',
 }

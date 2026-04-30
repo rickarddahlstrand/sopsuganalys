@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { useData } from '../../context/DataContext'
 
-export default function DataTable({ columns, data, maxRows = 20 }) {
-  const [sortKey, setSortKey] = useState(null)
-  const [sortDir, setSortDir] = useState('asc')
+export default function DataTable({ columns, data, maxRows = 20, defaultSort = null, rowClassName = null }) {
+  const [sortKey, setSortKey] = useState(defaultSort?.key ?? null)
+  const [sortDir, setSortDir] = useState(defaultSort?.dir ?? 'asc')
   const [showAll, setShowAll] = useState(false)
   const { state } = useData()
   const printMode = state.printMode
@@ -57,15 +57,21 @@ export default function DataTable({ columns, data, maxRows = 20 }) {
           </tr>
         </thead>
         <tbody>
-          {displayed.map((row, i) => (
-            <tr key={i} className={`border-t border-slate-100 dark:border-slate-800 ${i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-slate-800/25'}`}>
-              {columns.map(col => (
-                <td key={col.key} className="px-3 py-2 whitespace-nowrap">
-                  {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '–')}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {displayed.map((row, i) => {
+            const extraClass = rowClassName ? rowClassName(row, i) : ''
+            const baseClass = extraClass
+              ? extraClass
+              : (i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-slate-800/25')
+            return (
+              <tr key={i} className={`border-t border-slate-100 dark:border-slate-800 ${baseClass}`}>
+                {columns.map(col => (
+                  <td key={col.key} className="px-3 py-2 whitespace-nowrap">
+                    {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '–')}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
       {hasMore && (

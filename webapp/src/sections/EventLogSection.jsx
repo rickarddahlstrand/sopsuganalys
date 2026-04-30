@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Activity, CalendarDays, Zap, Clock, AlertTriangle, BatteryWarning, X, Timer, AlertCircle } from 'lucide-react'
+import { Activity, CalendarDays, Zap, Clock, AlertTriangle, BatteryWarning, X, Timer, AlertCircle, LogIn, Hand, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
@@ -244,44 +244,155 @@ function ClickableValveTable({ columns, data, rawEvents, dark }) {
   )
 }
 
+const FOLLOWUP_KIND_ORDER = ['engagement', 'login', 'manual', 'reset']
+const FOLLOWUP_KIND_LABELS = {
+  engagement: 'Engagemang',
+  login: 'Login',
+  manual: 'Manual',
+  reset: 'Reset',
+}
+const FOLLOWUP_KIND_COLORS = {
+  engagement: '#06b6d4',
+  login: '#22c55e',
+  manual: '#a855f7',
+  reset: '#f97316',
+}
+
 function ResponseTimeBlock({ responseTimes, theme, dark }) {
   const {
     matchedCount,
     unmatchedCount,
     totalAlarms,
     totalResets,
-    overallMedianSeconds,
+    totalLogins,
+    totalManualSwitches,
+    matchCounts,
+    overall,
     perType,
     longest,
+    alarmLog,
+    flaggedCount,
     timeline,
     timelineGranularity,
     unmatchedRatio,
     warning,
   } = responseTimes
 
+  const [showDetailedPerType, setShowDetailedPerType] = useState(false)
+
+  const ratio = (n) => (totalAlarms > 0 ? n / totalAlarms : 0)
+
+  // Per-type compact median table (one column per follow-up kind).
   const perTypeColumns = [
-    { key: 'typ', label: 'Typ', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
-    { key: 'count', label: 'Matchade' },
-    { key: 'medianSeconds', label: 'Median', render: (v) => formatDuration(v) },
-    { key: 'p75Seconds', label: 'p75', render: (v) => formatDuration(v) },
-    { key: 'p90Seconds', label: 'p90', render: (v) => formatDuration(v) },
-    { key: 'p95Seconds', label: 'p95', render: (v) => formatDuration(v) },
+    { key: 'typ', label: 'Larmtyp', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
+    { key: 'count', label: 'Larm' },
+    {
+      key: 'engagement',
+      label: 'Engagemang',
+      render: (v) => v?.count ? `${formatDuration(v.medianSeconds)} (${v.count})` : '–',
+    },
+    {
+      key: 'login',
+      label: 'Login',
+      render: (v) => v?.count ? `${formatDuration(v.medianSeconds)} (${v.count})` : '–',
+    },
+    {
+      key: 'manual',
+      label: 'Manual',
+      render: (v) => v?.count ? `${formatDuration(v.medianSeconds)} (${v.count})` : '–',
+    },
+    {
+      key: 'reset',
+      label: 'Reset',
+      render: (v) => v?.count ? `${formatDuration(v.medianSeconds)} (${v.count})` : '–',
+    },
   ]
 
+  // Detaljerad per-typ-tabell — flatten kind+percentile.
+  const detailedPerTypeRows = perType.flatMap((row) => {
+    return FOLLOWUP_KIND_ORDER.map((kind) => ({
+      key: `${row.typ}-${kind}`,
+      typ: row.typ,
+      kindLabel: FOLLOWUP_KIND_LABELS[kind],
+      kind,
+      count: row[kind]?.count ?? 0,
+      median: row[kind]?.medianSeconds ?? null,
+      p75: row[kind]?.p75Seconds ?? null,
+      p90: row[kind]?.p90Seconds ?? null,
+      p95: row[kind]?.p95Seconds ?? null,
+      mean: row[kind]?.meanSeconds ?? null,
+      stddev: row[kind]?.stddevSeconds ?? null,
+    }))
+  })
+
+  const detailedColumns = [
+    { key: 'typ', label: 'Larmtyp', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
+    { key: 'kindLabel', label: 'Mätpunkt' },
+    { key: 'count', label: 'n' },
+    { key: 'median', label: 'Median', render: (v) => v != null ? formatDuration(v) : '–' },
+    { key: 'p75', label: 'p75', render: (v) => v != null ? formatDuration(v) : '–' },
+    { key: 'p90', label: 'p90', render: (v) => v != null ? formatDuration(v) : '–' },
+    { key: 'p95', label: 'p95', render: (v) => v != null ? formatDuration(v) : '–' },
+    { key: 'mean', label: 'Medel', render: (v) => v != null ? formatDuration(v) : '–' },
+    { key: 'stddev', label: 'σ', render: (v) => v != null ? formatDuration(v) : '–' },
+  ]
+
+  // Topp 10 längsta — visa både engagemang och reset.
   const longestColumns = [
     { key: 'tid', label: 'Larmtid', render: (v) => v instanceof Date ? v.toLocaleString('sv-SE') : String(v) },
     { key: 'typ', label: 'Typ', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
     { key: 'identifier', label: 'Identifierare', render: (v) => v ?? '–' },
     { key: 'text', label: 'Larmtext' },
-    { key: 'seconds', label: 'Responstid', render: (v) => formatDuration(v) },
+    { key: 'engagementSeconds', label: 'Engagemang', render: (v) => v != null ? formatDuration(v) : '–' },
+    { key: 'resetSeconds', label: 'Reset', render: (v) => v != null ? formatDuration(v) : '–' },
   ]
 
-  const lineData = [{
-    id: 'Median responstid (min)',
-    data: timeline.map((d) => ({ x: d.period, y: Number(d.medianMinutes.toFixed(2)) })),
-  }]
+  // Larmlogg-tabell — alla larm individuellt, med flaggning för avvikande tider.
+  const truncate = (s, n = 80) => {
+    if (!s) return '–'
+    return s.length > n ? s.slice(0, n - 1) + '…' : s
+  }
+  const renderTime = (v, flagged) => {
+    if (v == null) return <span className="text-slate-400">–</span>
+    if (flagged) {
+      return (
+        <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300 font-medium">
+          <AlertCircle className="w-3.5 h-3.5" />
+          {formatDuration(v)}
+        </span>
+      )
+    }
+    return formatDuration(v)
+  }
+  const alarmLogColumns = [
+    { key: 'tid', label: 'Tidpunkt', render: (v) => v instanceof Date ? v.toLocaleString('sv-SE') : String(v) },
+    { key: 'typ', label: 'Typ', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
+    { key: 'text', label: 'Text', render: (v) => <span title={v}>{truncate(v, 80)}</span> },
+    { key: 'engagementSeconds', label: 'Engagemang', render: (v, row) => renderTime(v, row.flags?.engagement) },
+    { key: 'loginSeconds', label: 'Login', render: (v, row) => renderTime(v, row.flags?.login) },
+    { key: 'manualSeconds', label: 'Manual', render: (v, row) => renderTime(v, row.flags?.manual) },
+    { key: 'resetSeconds', label: 'Reset', render: (v, row) => renderTime(v, row.flags?.reset) },
+  ]
+
+  // Linjediagram — en linje per kind.
+  const lineData = FOLLOWUP_KIND_ORDER
+    .map((kind) => {
+      const data = timeline
+        .map((d) => ({ x: d.period, y: d[`${kind}MedianMinutes`] }))
+        .filter((p) => p.y != null)
+        .map((p) => ({ x: p.x, y: Number(p.y.toFixed(2)) }))
+      return { id: FOLLOWUP_KIND_LABELS[kind], data, kind }
+    })
+    .filter((s) => s.data.length > 0)
+
+  const lineColors = lineData.map((s) => FOLLOWUP_KIND_COLORS[s.kind])
 
   const showChart = timeline.length >= 2 && matchedCount >= 10
+
+  // Varningsbanner för låga matchningar per kind (<30%)
+  const lowMatchKinds = FOLLOWUP_KIND_ORDER
+    .filter((k) => totalAlarms > 0 && matchCounts[k] / totalAlarms < 0.3)
+    .map((k) => ({ kind: k, ratio: ratio(matchCounts[k]) }))
 
   return (
     <div className="mt-8">
@@ -290,8 +401,11 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
         <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Fjärr-responstid</h3>
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-3xl">
-        Tid från larm till "Alarm reset" (kvittering). Avser endast fjärrhantering — inställelsetid på plats ingår inte.
-        Eftersom resetraderna är generiska paras varje larm med närmast följande reset (samma reset kan kvittera flera larm).
+        Tid från larm till första uppföljande operatörshändelse, mätt i fyra steg:
+        <strong> Login</strong> ("Remote connection 1" — operatören kopplar upp),
+        <strong> Manual</strong> ("Change to manual operation mode" — operatören tar manuell kontroll),
+        <strong> Reset</strong> ("Alarm reset" — kvittering/åtgärd klar). <strong>Engagemang</strong> är det första
+        av dessa tre — alltså hur snabbt operatören över huvud taget reagerar. Endast fjärrhantering — inställelsetid på plats ingår inte.
       </p>
 
       {warning && (
@@ -301,40 +415,61 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
         </div>
       )}
 
+      {!warning && lowMatchKinds.length > 0 && (
+        <div className="flex items-start gap-2 mb-4 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50">
+          <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-orange-700 dark:text-orange-300">
+            Låg matchningsgrad (&lt;30 %) för: {lowMatchKinds.map((x, i) => (
+              <span key={x.kind}>
+                {i > 0 ? ', ' : ''}<strong>{FOLLOWUP_KIND_LABELS[x.kind]}</strong> ({pct(x.ratio * 100, 0)})
+              </span>
+            ))}. Tolka dessa median-värden med försiktighet.
+          </p>
+        </div>
+      )}
+
       <KpiGrid>
         <KpiCard
-          label="Median responstid"
-          value={formatDuration(overallMedianSeconds)}
+          label="Median tid till engagemang"
+          value={formatDuration(overall.engagement?.medianSeconds ?? 0)}
           icon={Timer}
           color="cyan"
-          info={KPI_INFO['Median responstid']}
+          info={KPI_INFO['Median tid till engagemang']}
+          compareValue={`${fmt(matchCounts.engagement)} av ${fmt(totalAlarms)} larm`}
         />
         <KpiCard
-          label="Matchade larm"
-          value={fmt(matchedCount)}
-          icon={Activity}
+          label="Median tid till login"
+          value={formatDuration(overall.login?.medianSeconds ?? 0)}
+          icon={LogIn}
           color="emerald"
-          info={KPI_INFO['Matchade larm']}
+          info={KPI_INFO['Median tid till login']}
+          compareValue={`${fmt(matchCounts.login)} av ${fmt(totalAlarms)} larm`}
         />
         <KpiCard
-          label="Omatchade larm"
-          value={`${fmt(unmatchedCount)} (${pct(unmatchedRatio * 100, 0)})`}
-          icon={AlertCircle}
-          color={unmatchedRatio > 0.3 ? 'red' : 'orange'}
-          info={KPI_INFO['Omatchade larm']}
+          label="Median tid till manual mode"
+          value={formatDuration(overall.manual?.medianSeconds ?? 0)}
+          icon={Hand}
+          color="purple"
+          info={KPI_INFO['Median tid till manual mode']}
+          compareValue={`${fmt(matchCounts.manual)} av ${fmt(totalAlarms)} larm`}
         />
         <KpiCard
-          label="Resetar / larm"
-          value={`${fmt(totalResets)} / ${fmt(totalAlarms)}`}
-          icon={CalendarDays}
-          color="blue"
-          info={KPI_INFO['Resetar i loggen']}
+          label="Median tid till reset"
+          value={formatDuration(overall.reset?.medianSeconds ?? 0)}
+          icon={RotateCcw}
+          color="orange"
+          info={KPI_INFO['Median tid till reset']}
+          compareValue={`${fmt(matchCounts.reset)} av ${fmt(totalAlarms)} larm`}
         />
       </KpiGrid>
 
+      <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+        {fmt(totalAlarms)} larm · {fmt(totalLogins)} login · {fmt(totalManualSwitches)} manual mode · {fmt(totalResets)} reset · {fmt(unmatchedCount)} larm utan engagemang ({pct(unmatchedRatio * 100, 0)})
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
         {perType.length > 0 && (
-          <ChartCard title="Responstid per larmtyp" height={Math.max(150, 60 + perType.length * 42)} info={CHART_INFO['Responstid per larmtyp']}>
+          <ChartCard title="Median per larmtyp och mätpunkt" height={Math.max(150, 60 + perType.length * 56)} info={CHART_INFO['Responstid per larmtyp']}>
             <div className="overflow-x-auto -m-2">
               <DataTable columns={perTypeColumns} data={perType} maxRows={20} />
             </div>
@@ -344,34 +479,88 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
         {showChart && (
           <ChartCard
             title={timelineGranularity === 'week' ? 'Median responstid per vecka' : 'Median responstid per dag'}
-            height={Math.max(250, 60 + perType.length * 42)}
+            height={Math.max(280, 60 + perType.length * 56)}
             info={CHART_INFO['Median responstid över tid']}
           >
             <ResponsiveLine
               data={lineData}
               theme={theme}
-              colors={['#06b6d4']}
-              margin={{ top: 10, right: 30, bottom: 50, left: 60 }}
+              colors={lineColors}
+              margin={{ top: 10, right: 110, bottom: 50, left: 60 }}
               axisLeft={{ tickSize: 0, tickPadding: 5, legend: 'min', legendPosition: 'middle', legendOffset: -45 }}
               axisBottom={{ tickSize: 0, tickPadding: 5, tickRotation: -45 }}
-              pointSize={5}
+              pointSize={4}
               useMesh
               curve="monotoneX"
-              enableArea
-              areaOpacity={0.1}
               enableSlices="x"
+              legends={[{
+                anchor: 'right',
+                direction: 'column',
+                translateX: 100,
+                itemWidth: 90,
+                itemHeight: 18,
+                symbolSize: 10,
+                itemTextColor: dark ? '#94a3b8' : '#64748b',
+              }]}
             />
           </ChartCard>
         )}
       </div>
 
+      {perType.length > 0 && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowDetailedPerType((v) => !v)}
+            className="text-xs font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            {showDetailedPerType ? 'Dölj detaljerad statistik (p75/p90/p95)' : 'Visa detaljerad statistik (p75/p90/p95)'}
+          </button>
+          <AnimatePresence>
+            {showDetailedPerType && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3">
+                  <DataTable columns={detailedColumns} data={detailedPerTypeRows} maxRows={detailedPerTypeRows.length} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       {longest.length > 0 && (
         <div className="mt-6">
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">
             Topp 10 längsta responstider
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-2">— enskilda larm med längst tid till kvittering</span>
+            <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-2">— enskilda larm med längst tid till engagemang/reset</span>
           </h4>
           <DataTable columns={longestColumns} data={longest} maxRows={10} />
+        </div>
+      )}
+
+      {alarmLog && alarmLog.length > 0 && (
+        <div className="mt-6">
+          <ChartCard title="Larmlogg med svartider" info={TABLE_INFO['Larmlogg med svartider']}>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              {fmt(alarmLog.length)} larm, varav <strong>{fmt(flaggedCount)}</strong> avvikande
+              {flaggedCount > 0 && (
+                <span className="ml-2 text-slate-400">— rader med röd bakgrund överstiger p90 eller medel + 2σ för sin mätpunkt</span>
+              )}
+            </div>
+            <DataTable
+              columns={alarmLogColumns}
+              data={alarmLog}
+              maxRows={25}
+              defaultSort={{ key: 'engagementSeconds', dir: 'desc' }}
+              rowClassName={(row) => row.flagged ? 'bg-red-50 dark:bg-red-950/30 hover:bg-red-100/60 dark:hover:bg-red-900/40' : ''}
+            />
+          </ChartCard>
         </div>
       )}
     </div>
