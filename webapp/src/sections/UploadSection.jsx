@@ -117,6 +117,9 @@ export default function UploadSection() {
       }
     }
 
+    // Accumulate events from all CSV log files; merge, sort, and dedup once
+    // at the end so analyzeEventLog runs on the combined dataset.
+    const csvLogEntries = [] // [{ fileName, events, dateRange }]
     for (let i = 0; i < csvFiles.length; i++) {
       const displayIdx = xlsFiles.length + i
       setFiles(prev => prev.map((f, idx) =>
@@ -128,9 +131,11 @@ export default function UploadSection() {
         const isLog = await isEventLogFile(csvFiles[i])
         if (isLog) {
           const logData = await readEventLogFile(csvFiles[i])
-          const analysis = analyzeEventLog(logData.events)
-          dispatch({ type: 'SET_EVENT_LOG_FILES', payload: logData })
-          dispatch({ type: 'SET_ANALYSIS', key: 'eventLog', payload: analysis })
+          csvLogEntries.push({
+            fileName: csvFiles[i].name,
+            events: logData.events,
+            dateRange: logData.dateRange,
+          })
         }
         setFiles(prev => prev.map((f, idx) =>
           idx === displayIdx ? { ...f, status: 'done' } : f
@@ -141,6 +146,23 @@ export default function UploadSection() {
           idx === displayIdx ? { ...f, status: 'error' } : f
         ))
       }
+    }
+
+    if (csvLogEntries.length > 0) {
+      // Concat, sort chronologically, dedup on (timestamp + typ + text).
+      const merged = csvLogEntries.flatMap(e => e.events)
+      merged.sort((a, b) => a.tid - b.tid)
+      const seen = new Set()
+      const deduped = []
+      for (const ev of merged) {
+        const key = `${ev.tid.getTime()}|${ev.typ}|${ev.text}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        deduped.push(ev)
+      }
+      const analysis = analyzeEventLog(deduped)
+      dispatch({ type: 'SET_EVENT_LOG_FILES', payload: csvLogEntries })
+      dispatch({ type: 'SET_ANALYSIS', key: 'eventLog', payload: analysis })
     }
 
     setProgress(100)

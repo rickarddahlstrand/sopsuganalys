@@ -52,18 +52,39 @@ export async function loadFacilityAnalysis(id) {
     trendanalys, ventiler, manuellAnalys, larm,
   )
 
-  // Optional: event log analysis if CSV event-log files were included
+  // Optional: event log analysis if CSV event-log files were included.
+  // Accumulate events across all CSV files, then dedup + sort + analyze once
+  // (mirrors UploadSection's multi-CSV handling).
   let eventLog = null
+  let eventLogFiles = null
+  const csvLogEntries = []
   for (const csv of csvFiles || []) {
     try {
       if (await isEventLogFile(csv)) {
         const logData = await readEventLogFile(csv)
-        eventLog = analyzeEventLog(logData.events)
-        break
+        csvLogEntries.push({
+          fileName: csv.name,
+          events: logData.events,
+          dateRange: logData.dateRange,
+        })
       }
     } catch (err) {
       console.warn(`Kunde inte läsa CSV-logg ${csv.name}:`, err)
     }
+  }
+  if (csvLogEntries.length > 0) {
+    const merged = csvLogEntries.flatMap(e => e.events)
+    merged.sort((a, b) => a.tid - b.tid)
+    const seen = new Set()
+    const deduped = []
+    for (const ev of merged) {
+      const key = `${ev.tid.getTime()}|${ev.typ}|${ev.text}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      deduped.push(ev)
+    }
+    eventLog = analyzeEventLog(deduped)
+    eventLogFiles = csvLogEntries
   }
 
   return {
@@ -80,5 +101,6 @@ export async function loadFacilityAnalysis(id) {
     drifterfarenheter,
     nivagivare,
     eventLog,
+    eventLogFiles,
   }
 }

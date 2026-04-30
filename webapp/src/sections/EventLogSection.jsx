@@ -367,7 +367,15 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
   const alarmLogColumns = [
     { key: 'tid', label: 'Tidpunkt', render: (v) => v instanceof Date ? v.toLocaleString('sv-SE') : String(v) },
     { key: 'typ', label: 'Typ', render: (val) => <StatusBadge status={severityStatusType(val)} label={val} /> },
-    { key: 'text', label: 'Text', render: (v) => <span title={v}>{truncate(v, 80)}</span> },
+    {
+      key: 'text',
+      label: 'Text',
+      // Allow the text column to wrap so the row stays readable when the user
+      // expands to all rows. The wrapper class overrides DataTable's default
+      // `whitespace-nowrap` per-cell.
+      cellClassName: 'whitespace-normal break-words min-w-[220px]',
+      render: (v) => <span title={v}>{truncate(v, 80)}</span>,
+    },
     { key: 'engagementSeconds', label: 'Engagemang', render: (v, row) => renderTime(v, row.flags?.engagement) },
     { key: 'loginSeconds', label: 'Login', render: (v, row) => renderTime(v, row.flags?.login) },
     { key: 'manualSeconds', label: 'Manual', render: (v, row) => renderTime(v, row.flags?.manual) },
@@ -553,13 +561,17 @@ function ResponseTimeBlock({ responseTimes, theme, dark }) {
                 <span className="ml-2 text-slate-400">— rader med röd bakgrund överstiger p90 eller medel + 2σ för sin mätpunkt</span>
               )}
             </div>
-            <DataTable
-              columns={alarmLogColumns}
-              data={alarmLog}
-              maxRows={25}
-              defaultSort={{ key: 'engagementSeconds', dir: 'desc' }}
-              rowClassName={(row) => row.flagged ? 'bg-red-50 dark:bg-red-950/30 hover:bg-red-100/60 dark:hover:bg-red-900/40' : ''}
-            />
+            {/* Limit height so "Visa alla" doesn't blow up the page on
+                CSV-loggar med tusentals larm — table scrolls internally. */}
+            <div className="max-h-[600px] overflow-y-auto rounded-lg">
+              <DataTable
+                columns={alarmLogColumns}
+                data={alarmLog}
+                maxRows={25}
+                defaultSort={{ key: 'engagementSeconds', dir: 'desc' }}
+                rowClassName={(row) => row.flagged ? 'bg-red-50 dark:bg-red-950/30 hover:bg-red-100/60 dark:hover:bg-red-900/40' : ''}
+              />
+            </div>
           </ChartCard>
         </div>
       )}
@@ -572,7 +584,22 @@ export default function EventLogSection() {
   const { dark } = useTheme()
   const theme = getNivoTheme(dark)
   const eventLog = state.eventLog
-  const rawEvents = state.eventLogFiles?.events
+  // eventLogFiles is now an array of { fileName, events, dateRange }.
+  // Combine raw events from all files for the clickable timeline drilldowns.
+  // Dedup logic already ran at upload time, so we can just concat here.
+  const rawEvents = useMemo(() => {
+    const elf = state.eventLogFiles
+    if (!elf) return null
+    if (Array.isArray(elf)) {
+      // Concat all events, sorted (already sorted within each file but not
+      // across files); cheap enough to re-sort.
+      const all = elf.flatMap(f => f.events || [])
+      all.sort((a, b) => a.tid - b.tid)
+      return all
+    }
+    // Backwards-compat: object with .events
+    return elf.events || null
+  }, [state.eventLogFiles])
 
   if (!eventLog) return (
     <SectionWrapper id="eventlog" title="Händelselogg" icon={Activity}>

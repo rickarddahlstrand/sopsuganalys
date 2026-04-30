@@ -17,6 +17,9 @@ const initialState = {
   drifterfarenheter: null,
   nivagivare: null,
   eventLog: null,
+  // eventLogFiles: array of { fileName, events, dateRange } — null when no CSV loaded.
+  // Use the SET_EVENT_LOG_FILES action which can take either a single file
+  // (wrapped automatically into an array) or an array, replacing all entries.
   eventLogFiles: null,
   originalXlsFiles: null,
   originalCsvFiles: null,
@@ -46,8 +49,14 @@ function reducer(state, action) {
       return { ...state, progress: action.payload.progress, progressLabel: action.payload.label || '' }
     case 'SET_ANALYSIS':
       return { ...state, [action.key]: action.payload }
-    case 'SET_EVENT_LOG_FILES':
-      return { ...state, eventLogFiles: action.payload }
+    case 'SET_EVENT_LOG_FILES': {
+      // Accept either an array of files or a single file object. Always store
+      // as array (or null when explicitly cleared).
+      const payload = action.payload
+      if (payload == null) return { ...state, eventLogFiles: null }
+      const arr = Array.isArray(payload) ? payload : [payload]
+      return { ...state, eventLogFiles: arr }
+    }
     case 'SET_ORIGINAL_FILES':
       return {
         ...state,
@@ -93,6 +102,11 @@ function reducer(state, action) {
       return { ...state, compareFacilities: [], compareData: null, compareName: null, compareMode: false }
     case 'LOAD_FROM_NETWORK': {
       const d = action.payload
+      // eventLogFiles may be array, single file, or null/undefined.
+      let elf = null
+      if (d.eventLogFiles != null) {
+        elf = Array.isArray(d.eventLogFiles) ? d.eventLogFiles : [d.eventLogFiles]
+      }
       return {
         ...state,
         facilityName: d.facilityName,
@@ -108,6 +122,7 @@ function reducer(state, action) {
         drifterfarenheter: d.drifterfarenheter ?? null,
         nivagivare: d.nivagivare ?? null,
         eventLog: d.eventLog ?? null,
+        eventLogFiles: elf,
         parsedFiles: [], // empty array so hasData triggers
         fromNetwork: true,
         isLoading: false,
