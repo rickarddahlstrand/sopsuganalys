@@ -1,6 +1,11 @@
 /**
  * Port of scripts/rekommendationer.py
  * Rule-based recommendation engine with thresholds
+ *
+ * Bedömningen baseras default på de senaste 3 månaderna (recent) — detta för
+ * att rekommendationerna ska prioritera nuläget snarare än drunkna i historik.
+ * Hela perioden bevaras i `history.fullPeriod` så UI:t kan visa "förbättrad
+ * sedan tidigare"-flaggor.
  */
 
 const TILLG_KRITISK = 95.0
@@ -8,15 +13,38 @@ const TILLG_VARNING = 98.0
 const FEL_HOG = 50
 const GREN_HALSA_KRITISK = 70
 
-function makeRec(prio, kategori, mal, rekommendation, dataunderlag, forvantadEffekt, atgarder) {
-  return { prioritet: prio, kategori, mal, rekommendation, dataunderlag, forvantadEffekt, atgarder }
+function makeRec(prio, kategori, mal, rekommendation, dataunderlag, forvantadEffekt, atgarder, extra = {}) {
+  return { prioritet: prio, kategori, mal, rekommendation, dataunderlag, forvantadEffekt, atgarder, ...extra }
 }
 
+/**
+ * Genererar rekommendationer för ett specifikt fönster (i månader).
+ * Tar emot förberäknad `recentVentiler` från caller (för att undvika cykliska imports).
+ */
+export function generateRekommendationerWindow(trendanalys, ventilerFull, larm, recentVentiler) {
+  if (!recentVentiler) {
+    return generateRekommendationer(trendanalys, ventilerFull, larm)
+  }
+  const enriched = { ...ventilerFull, recent: recentVentiler }
+  return generateRekommendationer(trendanalys, enriched, larm)
+}
+
+/**
+ * Genererar rekommendationer baserat på senaste 3 månaderna (default).
+ * `ventiler` förväntas ha `recent`-fält från analyzeVentiler.
+ */
 export function generateRekommendationer(trendanalys, ventiler, larm) {
+  // Använd recent som primär datakälla för rekommendationer
+  const ventilerRecent = ventiler?.recent || ventiler
+  const windowMonths = ventiler?.recent?.windowMonths || null
+
+  // Bygg "previous"-dataset (hela perioden, exkl. recent) för delta-beräkning
+  const previousAvailMap = buildPreviousAvailabilityMap(ventiler, ventilerRecent)
+
   const recs = []
 
   // ---- Maintenance recommendations ----
-  generateMaintenanceRecs(recs, trendanalys, ventiler)
+  generateMaintenanceRecs(recs, trendanalys, ventilerRecent, previousAvailMap, ventiler)
 
   // ---- Energy recommendations ----
   generateEnergyRecs(recs, trendanalys)
@@ -30,37 +58,88 @@ export function generateRekommendationer(trendanalys, ventiler, larm) {
   recs.sort((a, b) => a.prioritet - b.prioritet)
 
   // ---- Strategic goals ----
-  const goals = generateStrategicGoals(trendanalys, ventiler)
+  const goals = generateStrategicGoals(trendanalys, ventilerRecent)
 
   // ---- Operator agenda ----
-  const agenda = generateOperatorAgenda(recs, goals, trendanalys, ventiler)
+  const agenda = generateOperatorAgenda(recs, goals, trendanalys, ventilerRecent)
 
-  return { recommendations: recs, goals, agenda }
+  return {
+    recommendations: recs,
+    goals,
+    agenda,
+    windowMonths,
+    history: {
+      fullPeriod: {
+        overallAvail: ventiler?.overallAvail,
+        totalErrors: ventiler?.totalErrors,
+        valveCount: ventiler?.valveSummary?.length || 0,
+      },
+    },
+  }
 }
 
-function generateMaintenanceRecs(recs, trendanalys, ventiler) {
+/**
+ * Beräknar tidigare tillgänglighet (snitt över allt utom recent) per ventil.
+ * Används för att flagga ventiler som förbättrats under den senaste perioden.
+ */
+function buildPreviousAvailabilityMap(ventiler, ventilerRecent) {
+  const map = {}
+  if (!ventiler?.availability || !ventilerRecent?.availability) return map
+
+  const recentSortKeys = new Set(ventilerRecent.availability.map(a => a.sortKey))
+
+  const prevByValve = {}
+  for (const a of ventiler.availability) {
+    if (recentSortKeys.has(a.sortKey)) continue
+    if (!prevByValve[a.valveId]) prevByValve[a.valveId] = []
+    prevByValve[a.valveId].push(a.availability)
+  }
+
+  for (const [vid, vals] of Object.entries(prevByValve)) {
+    if (vals.length === 0) continue
+    map[vid] = Math.round(avg(vals) * 100) / 100
+  }
+  return map
+}
+
+function generateMaintenanceRecs(recs, trendanalys, ventiler, previousAvailMap, ventilerFull) {
   if (!ventiler?.valveSummary?.length) return
 
-  // Compute per-valve average + trend
-  const valveData = ventiler.valveSummary.map(v => ({
-    ...v,
-    trend: trendanalys.trendsPerValve[v.valveId]?.trendClass || '?',
-  }))
+  // Compute per-valve average + trend (recent-baserat)
+  const valveData = ventiler.valveSummary.map(v => {
+    const prevAvail = previousAvailMap[v.valveId] ?? null
+    const delta = prevAvail != null ? Math.round((v.avgAvailability - prevAvail) * 100) / 100 : null
+    const improved = delta != null && delta > 0.5
+    const worsened = delta != null && delta < -0.5
+    return {
+      ...v,
+      trend: trendanalys.trendsPerValve[v.valveId]?.trendClass || '?',
+      previousAvailability: prevAvail,
+      recentAvailability: v.avgAvailability,
+      delta,
+      improved,
+      worsened,
+    }
+  })
 
-  // Prio 1: Critical availability or declining trend
+  // Prio 1: Critical availability or declining trend (recent)
   const critical = valveData.filter(v =>
     v.avgAvailability < TILLG_KRITISK ||
     (v.trend === 'minskande' && v.avgAvailability < TILLG_VARNING)
   )
   if (critical.length > 0) {
     const top = critical.sort((a, b) => a.avgAvailability - b.avgAvailability).slice(0, 10)
-    const details = top.map(v => `${v.valveId} (${v.avgAvailability.toFixed(1)}%)`).join(', ')
+    const details = top.map(v => {
+      const deltaStr = v.delta != null ? ` ${v.delta > 0 ? '+' : ''}${v.delta.toFixed(1)} pp` : ''
+      return `${v.valveId} (${v.avgAvailability.toFixed(1)}%${deltaStr})`
+    }).join(', ')
     recs.push(makeRec(
       1, 'Underhåll', 'Ventiler med kritisk tillgänglighet',
       `Akut underhåll krävs för ${critical.length} ventiler med tillgänglighet under ${TILLG_KRITISK}% eller nedåttrend under ${TILLG_VARNING}%.`,
       `Sämsta: ${details}`,
       'Höjd tillgänglighet till >98% för berörda ventiler inom 1 månad',
       ['Inspektera mekanisk funktion för varje listad ventil', 'Kontrollera ventildon och givare', 'Planera byte av slitdelar vid behov', 'Installera ökat övervakningsintervall under åtgärdsperioden'],
+      { valves: critical.map(v => ({ valveId: v.valveId, recentAvailability: v.recentAvailability, previousAvailability: v.previousAvailability, delta: v.delta, improved: v.improved, worsened: v.worsened, totalErrors: v.totalErrors })) },
     ))
   }
 
@@ -73,10 +152,11 @@ function generateMaintenanceRecs(recs, trendanalys, ventiler) {
   if (warning.length > 0) {
     recs.push(makeRec(
       2, 'Underhåll', 'Ventiler under bevakning',
-      `${warning.length} ventiler med tillgänglighet ${TILLG_KRITISK}–${TILLG_VARNING}% eller mer än ${FEL_HOG} årsfel kräver förstärkta kontroller.`,
+      `${warning.length} ventiler med tillgänglighet ${TILLG_KRITISK}–${TILLG_VARNING}% eller fler än ${FEL_HOG} fel under perioden kräver förstärkta kontroller.`,
       `Antal: ${warning.length} ventiler`,
       'Förhindra att dessa ventiler går över till kritisk status',
       ['Lägg till i förstärkt underhållsschema (månatlig kontroll)', 'Analysera felkodsmönster för att identifiera rotorsak', 'Övervakning: om tillgänglighet sjunker 2 procentenheter → eskalera'],
+      { valves: warning.map(v => ({ valveId: v.valveId, recentAvailability: v.recentAvailability, previousAvailability: v.previousAvailability, delta: v.delta, improved: v.improved, worsened: v.worsened, totalErrors: v.totalErrors })) },
     ))
   }
 
@@ -85,10 +165,11 @@ function generateMaintenanceRecs(recs, trendanalys, ventiler) {
   if (fragile.length > 0) {
     recs.push(makeRec(
       3, 'Underhåll', 'Bräckliga ventiler (hög tillgänglighet men många fel)',
-      `${fragile.length} ventiler har 100% tillgänglighet men över 20 årsfel. Dessa kan snabbt gå från perfekt till kritisk.`,
+      `${fragile.length} ventiler har 100% tillgänglighet men över 20 fel under perioden. Dessa kan snabbt gå från perfekt till kritisk.`,
       `Antal: ${fragile.length} ventiler med dold riskprofil`,
       'Proaktiv identifiering av potentiella framtida problem',
       ['Granska felloggar för att förstå felmönster', 'Övervakning: om fel ökar >50% nästa månad → eskalera', 'Planera förebyggande underhåll under låginblandningstider'],
+      { valves: fragile.map(v => ({ valveId: v.valveId, recentAvailability: v.recentAvailability, previousAvailability: v.previousAvailability, delta: v.delta, improved: v.improved, worsened: v.worsened, totalErrors: v.totalErrors })) },
     ))
   }
 }

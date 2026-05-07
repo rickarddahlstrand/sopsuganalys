@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react'
-import { Activity, ChevronDown, ChevronUp, Info } from 'lucide-react'
+import { Activity, ChevronDown, ChevronUp, Info, ArrowUp, ArrowDown, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
 import { getNivoTheme } from '../utils/nivoTheme'
@@ -7,6 +7,7 @@ import { fmt, fmt1, pct } from '../utils/formatters'
 import { ERROR_COLORS, ERROR_NAMES_SV } from '../utils/colors'
 import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import { buildValveFractionMap, getValveFraction, fractionLabelSv } from '../utils/valveFraction'
+import { DEFAULT_RECENT_WINDOW } from '../utils/recentSlice'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -65,7 +66,41 @@ export default function VentilerSection() {
 
   if (!v) return <SectionWrapper id="ventiler" title="Ventilhälsa" icon={Activity} info={SECTION_INFO.ventiler}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
-  const allWorst = v.worstValves || []
+  const recent = v.recent
+  const useRecent = recent && recent.windowMonths != null && recent.windowMonths < (state.parsedFiles?.length || 0)
+
+  // Bygg ihop "worst valves" baserat på recent (senaste N mån) men visa hela perioden bredvid
+  // Sortera på recent-tillgänglighet stigande
+  const fullAvailMap = Object.fromEntries((v.valveSummary || []).map(s => [s.valveId, s.avgAvailability]))
+
+  let allWorst
+  if (useRecent && recent.valveSummary?.length) {
+    // Bygg från recent-summary, använd recent som primär och tillgänglighet från full som sekundär
+    allWorst = [...recent.valveSummary]
+      .map(rv => {
+        const fullAvail = fullAvailMap[rv.valveId]
+        const delta = fullAvail != null ? Math.round((rv.avgAvailability - fullAvail) * 100) / 100 : null
+        return {
+          valveId: rv.valveId,
+          recentAvailability: rv.avgAvailability,
+          fullAvailability: fullAvail ?? null,
+          totalErrors: rv.totalErrors,
+          delta,
+          // bakåtkompatibelt fält
+          avgAvailability: rv.avgAvailability,
+        }
+      })
+      .sort((a, b) => a.recentAvailability - b.recentAvailability)
+  } else {
+    allWorst = (v.worstValves || []).map(w => ({
+      valveId: w.valveId,
+      avgAvailability: w.avgAvailability,
+      recentAvailability: w.avgAvailability,
+      fullAvailability: w.avgAvailability,
+      totalErrors: w.totalErrors,
+      delta: null,
+    }))
+  }
   const chartLimit = showAllChart ? allWorst.length : DEFAULT_CHART_LIMIT
   const chartData = allWorst.slice(0, chartLimit)
   const cardLimit = showAllTable ? allWorst.length : DEFAULT_TABLE_LIMIT
@@ -148,12 +183,39 @@ export default function VentilerSection() {
     ? `${chartData.length} sämsta ventilerna (tillgänglighet)`
     : `${DEFAULT_CHART_LIMIT} sämsta ventilerna (tillgänglighet)`
 
+  // Recent vs full delta för medeltillgänglighet
+  const availDelta = useRecent && recent?.overallAvail != null && v.overallAvail != null
+    ? Math.round((recent.overallAvail - v.overallAvail) * 100) / 100
+    : null
+  const recentLabelText = useRecent ? `Senaste ${recent.windowMonths} mån` : ''
+
   return (
     <SectionWrapper id="ventiler" title="Ventilhälsa" icon={Activity} info={SECTION_INFO.ventiler}>
       <KpiGrid>
         <KpiCard label="Ventiler" value={fmt(v.uniqueValves)} icon={Activity} color="blue" info={KPI_INFO['Ventiler']} compareValue={compareMode && cv ? fmt(cv.uniqueValves) : undefined} />
-        <KpiCard label="Medeltillgänglighet" value={pct(v.overallAvail)} icon={Activity} color="emerald" info={KPI_INFO['Medeltillgänglighet']} compareValue={compareMode && cv ? pct(cv.overallAvail) : undefined} />
-        <KpiCard label="Totala fel" value={fmt(v.totalErrors)} icon={Activity} color="red" info={KPI_INFO['Totala fel']} compareValue={compareMode && cv ? fmt(cv.totalErrors) : undefined} />
+        <KpiCard
+          label="Medeltillgänglighet"
+          value={useRecent ? pct(recent.overallAvail) : pct(v.overallAvail)}
+          icon={Activity}
+          color="emerald"
+          info={KPI_INFO['Medeltillgänglighet']}
+          compareValue={compareMode && cv ? pct(cv.overallAvail) : undefined}
+          showRecentBadge={useRecent}
+          recentLabel={recentLabelText}
+          historicValue={useRecent ? pct(v.overallAvail) : undefined}
+          trendDelta={availDelta != null ? { value: availDelta, unit: ' pp', betterWhen: 'higher' } : null}
+        />
+        <KpiCard
+          label="Totala fel"
+          value={useRecent ? fmt(recent.totalErrors) : fmt(v.totalErrors)}
+          icon={Activity}
+          color="red"
+          info={KPI_INFO['Totala fel']}
+          compareValue={compareMode && cv ? fmt(cv.totalErrors) : undefined}
+          showRecentBadge={useRecent}
+          recentLabel={recentLabelText}
+          historicValue={useRecent ? fmt(v.totalErrors) : undefined}
+        />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">
@@ -282,7 +344,11 @@ export default function VentilerSection() {
       {cardData.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Sämsta ventilerna<InfoButton text={TABLE_INFO['Sämsta ventilerna']} size={14} /></h4>
+            <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              Sämsta ventilerna
+              {useRecent && <span className="text-[11px] font-normal text-blue-600 dark:text-blue-400">— sorterat på senaste {recent.windowMonths} mån</span>}
+              <InfoButton text={TABLE_INFO['Sämsta ventilerna']} size={14} />
+            </h4>
             {!printMode && allWorst.length > DEFAULT_TABLE_LIMIT && (
               <button
                 onClick={() => setShowAllTable(s => !s)}
@@ -297,10 +363,13 @@ export default function VentilerSection() {
               <WorstValveCard
                 key={w.valveId}
                 valveId={w.valveId}
-                availability={w.avgAvailability}
+                availability={w.recentAvailability ?? w.avgAvailability}
+                fullAvailability={useRecent ? w.fullAvailability : null}
+                delta={useRecent ? w.delta : null}
                 totalErrors={w.totalErrors}
                 fraction={getValveFraction(w.valveId, fractionMap)}
                 info={valveInfoMap.get(w.valveId) || ''}
+                windowMonths={useRecent ? recent.windowMonths : null}
               />
             ))}
           </div>
@@ -317,13 +386,28 @@ function availabilityTone(value) {
   return { border: 'border-emerald-300 dark:border-emerald-800', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', label: 'OK' }
 }
 
-function WorstValveCard({ valveId, availability, totalErrors, fraction, info }) {
+function WorstValveCard({ valveId, availability, fullAvailability, delta, totalErrors, fraction, info, windowMonths }) {
   const tone = availabilityTone(availability)
   const fractionLabel = fraction ? fractionLabelSv(fraction) : '—'
   // Info-faltet borjar oftast med fraktionsnamnet fran bla Sheet9/11 — visa resten som grenbeskrivning
   const extraInfo = info
     ? info.replace(/^[^,]+,\s*/, '').trim()
     : ''
+
+  // Delta-pil
+  let deltaEl = null
+  if (delta != null && !Number.isNaN(delta)) {
+    const stable = Math.abs(delta) < 0.05
+    const isImprovement = delta > 0
+    const cls = stable ? 'text-slate-400' : isImprovement ? 'text-emerald-500' : 'text-red-500'
+    const Arrow = stable ? ArrowRight : (isImprovement ? ArrowUp : ArrowDown)
+    deltaEl = (
+      <div className={`flex items-center gap-1 text-xs ${cls}`}>
+        <Arrow className="w-3 h-3" />
+        <span>{delta > 0 ? '+' : ''}{delta.toFixed(2)} pp</span>
+      </div>
+    )
+  }
 
   return (
     <div className={`rounded-lg border ${tone.border} bg-slate-50 dark:bg-slate-800/50 p-4 flex flex-col gap-2`}>
@@ -333,9 +417,22 @@ function WorstValveCard({ valveId, availability, totalErrors, fraction, info }) 
           {tone.label}
         </span>
       </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{pct(availability)}</span>
-        <span className="text-xs text-slate-500 dark:text-slate-400">tillgänglighet</span>
+      <div>
+        {windowMonths != null && (
+          <div className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mb-0.5">
+            Senaste {windowMonths} mån
+          </div>
+        )}
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{pct(availability)}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">tillgänglighet</span>
+        </div>
+        {fullAvailability != null && (
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Hela perioden: <span className="font-medium text-slate-600 dark:text-slate-300">{pct(fullAvailability)}</span>
+          </div>
+        )}
+        {deltaEl}
       </div>
       <div className="text-sm text-slate-600 dark:text-slate-300">
         Fraktion: <span className="font-medium">{fractionLabel}</span>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Hand, ChevronDown, ChevronUp } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useTheme } from '../context/ThemeContext'
@@ -7,6 +7,8 @@ import { fmt, fmt1, fmt2, pct } from '../utils/formatters'
 import { manualColor } from '../utils/colors'
 import { SECTION_INFO, CHART_INFO, KPI_INFO, TABLE_INFO } from '../utils/descriptions'
 import { fractionLabelSv } from '../utils/valveFraction'
+import { analyzeManuellWindow } from '../analysis/manuellAnalys'
+import { DEFAULT_RECENT_WINDOW } from '../utils/recentSlice'
 import SectionWrapper from '../components/common/SectionWrapper'
 import KpiGrid from '../components/common/KpiGrid'
 import KpiCard from '../components/common/KpiCard'
@@ -16,6 +18,7 @@ import EmptyState from '../components/common/EmptyState'
 import InfoButton from '../components/common/InfoButton'
 import SortToggle from '../components/common/SortToggle'
 import StatusBadge from '../components/common/StatusBadge'
+import WindowPicker from '../components/common/WindowPicker'
 import { createTrendLineLayer } from '../components/charts/TrendLine'
 import { COMPARE_COLORS } from './CompareSection'
 import { ResponsiveBar } from '@nivo/bar'
@@ -51,6 +54,18 @@ export default function ManuellSection() {
   const [showAllValves, setShowAllValves] = useState(false)
   const [showAllBranches, setShowAllBranches] = useState(false)
   const [showAllTable, setShowAllTable] = useState(false)
+
+  const totalMonths = state.parsedFiles?.length || 0
+  const defaultWindow = totalMonths > DEFAULT_RECENT_WINDOW ? DEFAULT_RECENT_WINDOW : null
+  const [windowMonths, setWindowMonths] = useState(defaultWindow)
+
+  // Räkna ut "recent"-analys baserat på vald fönsterstorlek
+  const manRecent = useMemo(() => {
+    if (!state.parsedFiles?.length) return null
+    if (windowMonths == null) return man  // hela perioden
+    if (windowMonths === DEFAULT_RECENT_WINDOW && man?.recent) return man.recent
+    return analyzeManuellWindow(state.parsedFiles, windowMonths)
+  }, [state.parsedFiles, windowMonths, man])
 
   if (!man) return <SectionWrapper id="manuell" title="Manuella körningar" icon={Hand} info={SECTION_INFO.manuell}><EmptyState loading={state.isLoading} /></SectionWrapper>
 
@@ -149,12 +164,54 @@ export default function ManuellSection() {
   const drift = state.drifterfarenheter
   const alarmCatCorr = drift?.manualVsAlarmCategories?.correlations || []
 
+  // KPI-värden baserade på valt fönster (eller hela perioden om null)
+  const showRecent = windowMonths != null && manRecent && manRecent !== man
+  const kpiMan = showRecent ? manRecent : man
+  const recentLabelText = windowMonths != null ? `Senaste ${windowMonths} mån` : 'Hela perioden'
+  const pctTrend = showRecent ? Math.round((kpiMan.yearPct - man.yearPct) * 100) / 100 : null
+
   return (
     <SectionWrapper id="manuell" title="Manuella körningar" icon={Hand} info={SECTION_INFO.manuell}>
+      {totalMonths > DEFAULT_RECENT_WINDOW && !printMode && (
+        <div className="mb-4">
+          <WindowPicker value={windowMonths} onChange={setWindowMonths} totalMonths={totalMonths} />
+        </div>
+      )}
       <KpiGrid>
-        <KpiCard label="Manuella kommandon" value={fmt(man.totalMan)} icon={Hand} color="purple" info={KPI_INFO['Manuella kommandon']} compareValue={compareMode && cman ? fmt(cman.totalMan) : undefined} />
-        <KpiCard label="Totala kommandon" value={fmt(man.totalAll)} icon={Hand} color="blue" info={KPI_INFO['Totala kommandon']} compareValue={compareMode && cman ? fmt(cman.totalAll) : undefined} />
-        <KpiCard label="Manuell andel" value={`${man.yearPct}%`} icon={Hand} color="orange" info={KPI_INFO['Manuell andel']} compareValue={compareMode && cman ? `${cman.yearPct}%` : undefined} />
+        <KpiCard
+          label="Manuella kommandon"
+          value={fmt(kpiMan.totalMan)}
+          icon={Hand}
+          color="purple"
+          info={KPI_INFO['Manuella kommandon']}
+          compareValue={compareMode && cman ? fmt(cman.totalMan) : undefined}
+          showRecentBadge={showRecent}
+          recentLabel={recentLabelText}
+          historicValue={showRecent ? fmt(man.totalMan) : undefined}
+        />
+        <KpiCard
+          label="Totala kommandon"
+          value={fmt(kpiMan.totalAll)}
+          icon={Hand}
+          color="blue"
+          info={KPI_INFO['Totala kommandon']}
+          compareValue={compareMode && cman ? fmt(cman.totalAll) : undefined}
+          showRecentBadge={showRecent}
+          recentLabel={recentLabelText}
+          historicValue={showRecent ? fmt(man.totalAll) : undefined}
+        />
+        <KpiCard
+          label="Manuell andel"
+          value={`${kpiMan.yearPct}%`}
+          icon={Hand}
+          color="orange"
+          info={KPI_INFO['Manuell andel']}
+          compareValue={compareMode && cman ? `${cman.yearPct}%` : undefined}
+          showRecentBadge={showRecent}
+          recentLabel={recentLabelText}
+          historicValue={showRecent ? `${man.yearPct}%` : undefined}
+          trendDelta={showRecent && pctTrend != null ? { value: pctTrend, unit: ' pp', betterWhen: 'lower' } : null}
+        />
       </KpiGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 [&>:last-child:nth-child(odd)]:md:col-span-2">

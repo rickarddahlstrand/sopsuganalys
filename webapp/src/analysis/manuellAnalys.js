@@ -6,8 +6,39 @@
 import { linregress } from '../stats/linregress'
 import { detectAnomalies } from '../stats/anomaly'
 import { buildValveFractionMap, getValveFraction } from '../utils/valveFraction'
+import { recentMonths, getDefaultWindow } from './../utils/recentSlice'
 
 export function analyzeManuell(parsedFiles) {
+  const result = analyzeManuellCore(parsedFiles)
+
+  // Berika med "recent" — analys på de senaste N månaderna (default 3)
+  const recentWindow = getDefaultWindow(parsedFiles)
+  if (recentWindow != null && recentWindow < parsedFiles.length) {
+    const recentFiles = recentMonths(parsedFiles, recentWindow)
+    result.recent = analyzeManuellCore(recentFiles)
+    result.recent.windowMonths = recentWindow
+    result.recent.monthLabels = recentFiles.map(f => f.month)
+  } else {
+    result.recent = { ...result, windowMonths: parsedFiles.length, monthLabels: parsedFiles.map(f => f.month) }
+  }
+
+  return result
+}
+
+/**
+ * Analys på en specifik fönsterstorlek (i månader). Användbart för
+ * UI:t som vill växla mellan 3/6/12 mån eller hela perioden.
+ */
+export function analyzeManuellWindow(parsedFiles, windowMonths) {
+  if (!parsedFiles?.length) return null
+  if (windowMonths == null || windowMonths >= parsedFiles.length) {
+    return analyzeManuellCore(parsedFiles)
+  }
+  const slice = recentMonths(parsedFiles, windowMonths)
+  return analyzeManuellCore(slice)
+}
+
+function analyzeManuellCore(parsedFiles) {
   const manualData = []
   const fractionMap = buildValveFractionMap(parsedFiles)
 

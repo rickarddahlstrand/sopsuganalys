@@ -232,6 +232,11 @@ export const SECTION_INFO = {
 
   rekommendationer:
     'Rekommendationerna är automatiskt genererade baserat på alla föregående analyser. ' +
+    'Bedömningen utgår som default från de senaste 3 månaderna — så att färska förbättringar ' +
+    'inte drunknar i historisk data. Använd period-väljaren ovan för att växla till 6, 12 mån eller hela perioden. ' +
+    'Varje kritisk ventil visar både senaste värdet och historiskt snitt med en delta-pil mellan, ' +
+    'och får en "Förbättrad"-flagga om tillgängligheten ökat senaste perioden. ' +
+    '\n\n' +
     'Prio 1 (AKUT) kräver omedelbar åtgärd, Prio 2 (HÖG) inom 1–3 månader, ' +
     'Prio 3 (MEDEL) planera in nästa kvartal, Prio 4 (LÅG) längre sikt/optimering. ' +
     'Varje rekommendation innehåller dataunderlag, förväntad effekt och konkreta åtgärder.' +
@@ -266,7 +271,9 @@ export const KPI_INFO = {
 
   'Medeltillgänglighet':
     'Genomsnittlig tillgänglighet för alla sopventiler. ' +
-    'Över 99% är bra, 98–99% kräver uppmärksamhet, under 98% indikerar allvarliga problem.',
+    'Över 99% är bra, 98–99% kräver uppmärksamhet, under 98% indikerar allvarliga problem. ' +
+    'Primärvärdet visar de senaste 3 månaderna (om tillräcklig data finns); ' +
+    '"Hela perioden" visas under för historisk kontext, och en pil markerar förändringen.',
 
   'Totala larm':
     'Totalt antal loggade larm under perioden — alla kategorier inkluderade (General, Critical, Total stop).',
@@ -308,8 +315,10 @@ export const KPI_INFO = {
     'Totalt antal öppningskommandon (manuella + automatiska) under perioden.',
 
   'Manuell andel':
-    'Procentandel manuella kommandon av alla kommandon under hela perioden. ' +
-    'Under 3% är normalt, 3–10% bör övervakas, över 10% kräver åtgärd.',
+    'Procentandel manuella kommandon av alla kommandon. ' +
+    'Under 3% är normalt, 3–10% bör övervakas, över 10% kräver åtgärd. ' +
+    'Primärvärdet visar valt fönster (default senaste 3 mån); "Hela perioden" visas under, ' +
+    'och en pil markerar förändringen — lägre värde är bättre.',
 
   'kWh/tömning (medel)':
     'Genomsnittlig energiförbrukning per tömningscykel under perioden. ' +
@@ -480,7 +489,11 @@ export const TABLE_INFO = {
     'Högt antal starter med kort körtid kan indikera ineffektiva programcykler.',
 
   'Sämsta ventilerna':
-    'Sopventiler rangordnade efter lägst genomsnittlig tillgänglighet. ' +
+    'Sopventiler rangordnade efter lägst tillgänglighet. ' +
+    'Sorteringen utgår default från senaste 3 månader (om tillräcklig data finns) så att nyligen försämrade ventiler ' +
+    'kommer fram även om hela periodens snitt fortfarande ser bra ut. ' +
+    'Varje kort visar senaste värdet stort, hela periodens snitt litet under, samt en pil ' +
+    'som markerar om ventilen förbättrats (grön upp) eller försämrats (röd ned). ' +
     'Under 95% är kritiskt (röd), 95–99% varning (orange), över 99% OK (grön). ' +
     'Ventiler med kroniskt låg tillgänglighet bör prioriteras för underhåll.',
 

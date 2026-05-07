@@ -35,6 +35,14 @@ export default function DashboardSection() {
   const valveCount = ventiler?.uniqueValves
   const branchCount = trendanalys?.branchAnalysis?.length
 
+  // Recent (senaste N mån) — visa primärt om tillgängligt
+  const ventilerRecent = ventiler?.recent
+  const useRecent = ventilerRecent?.windowMonths != null && ventilerRecent.windowMonths < (state.parsedFiles?.length || 0)
+  const recentLabelText = useRecent ? `Senaste ${ventilerRecent.windowMonths} mån` : ''
+  const availDelta = useRecent && ventilerRecent.overallAvail != null && avgAvail != null
+    ? Math.round((ventilerRecent.overallAvail - avgAvail) * 100) / 100
+    : null
+
   // Compare data
   const ced = compareData?.energiDrift
   const cv = compareData?.ventiler
@@ -63,7 +71,18 @@ export default function DashboardSection() {
       <KpiGrid>
         <KpiCard label="Total energi" value={`${fmt(totalKwh)} kWh`} icon={Zap} color="yellow" info={KPI_INFO['Total energi']} compareValue={compareMode && ced ? `${fmt(ced.totalEnergy)} kWh` : undefined} />
         <KpiCard label="Totala tömningar" value={fmt(totalEmptyings)} icon={Trash2} color="cyan" info={KPI_INFO['Totala tömningar']} compareValue={compareMode && ced ? fmt(ced.totalEmptyings) : undefined} />
-        <KpiCard label="Medeltillgänglighet" value={pct(avgAvail)} icon={Gauge} color="blue" info={KPI_INFO['Medeltillgänglighet']} compareValue={compareMode && cv ? pct(cv.overallAvail) : undefined} />
+        <KpiCard
+          label="Medeltillgänglighet"
+          value={useRecent ? pct(ventilerRecent.overallAvail) : pct(avgAvail)}
+          icon={Gauge}
+          color="blue"
+          info={KPI_INFO['Medeltillgänglighet']}
+          compareValue={compareMode && cv ? pct(cv.overallAvail) : undefined}
+          showRecentBadge={useRecent}
+          recentLabel={recentLabelText}
+          historicValue={useRecent ? pct(avgAvail) : undefined}
+          trendDelta={availDelta != null ? { value: availDelta, unit: ' pp', betterWhen: 'higher' } : null}
+        />
         <KpiCard label="Totala larm" value={fmt(totalAlarms)} icon={AlertTriangle} color="red" info={KPI_INFO['Totala larm']} compareValue={compareMode && cl ? fmt(cl.totalAlarms) : undefined} />
         <KpiCard label="Ventiler" value={fmt(valveCount)} icon={Activity} color="emerald" info={KPI_INFO['Ventiler']} compareValue={compareMode && cv ? fmt(cv.uniqueValves) : undefined} />
         <KpiCard label="Grenar" value={fmt(branchCount)} icon={GitBranch} color="orange" info={KPI_INFO['Grenar']} compareValue={compareMode && ct ? fmt(ct.branchAnalysis?.length) : undefined} />
