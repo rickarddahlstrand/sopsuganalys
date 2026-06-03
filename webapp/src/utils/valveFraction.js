@@ -55,7 +55,8 @@ export function buildValveFractionMap(parsedFiles) {
 
   const knownFractions = new Set()
   for (const file of parsedFiles) {
-    for (const row of file.sheets?.sheet5 || []) {
+    const fracs = file.sheets?.sheet5?.fractions || []
+    for (const row of fracs) {
       const name = normalize(row.fraction)
       if (name) knownFractions.add(name)
     }

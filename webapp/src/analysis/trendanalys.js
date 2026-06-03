@@ -10,12 +10,12 @@ import { detectSeasonalPatterns } from '../stats/autocorrelation'
 import { movingAverage } from '../stats/movingAverage'
 import { healthScore } from '../stats/healthScore'
 
-export function analyzeTrender(parsedFiles, energiDrift, ventiler, larm) {
+export function analyzeTrender(parsedFiles, energiDrift, ventiler, larm, monthlyHistory) {
   // ---- Collect per-valve per-month data (like trendanalys.py collect_valve_monthly) ----
   const valveMonthly = collectValveMonthly(parsedFiles)
 
   // ---- Energy detail (like collect_energy_detail) ----
-  const energyDetail = collectEnergyDetail(parsedFiles)
+  const energyDetail = collectEnergyDetail(monthlyHistory || [])
 
   // ---- Facility-level trends ----
   const energyValues = energyDetail.map(e => e.totalKwh)
@@ -216,22 +216,24 @@ function collectValveMonthly(parsedFiles) {
   return rows
 }
 
-function collectEnergyDetail(parsedFiles) {
-  return parsedFiles.map(file => {
-    const { monthNum, sortKey, month, sheets } = file
-    const totalKwh = sheets.sheet3.totalEnergy
-    const totalEmptyings = sheets.sheet5.reduce((s, r) => s + (r.emptyings || 0), 0)
+function collectEnergyDetail(monthlyHistory) {
+  return monthlyHistory.map(m => {
+    const totalKwh = m.energyTotal || 0
+    let totalEmptyings = 0
+    for (const data of Object.values(m.perFraction || {})) {
+      totalEmptyings += data.emptyings || 0
+    }
     const kwhPerEmptying = totalEmptyings > 0
       ? Math.round(totalKwh / totalEmptyings * 1000) / 1000
       : 0
 
     return {
-      monthNum,
-      sortKey,
-      month,
+      monthNum: m.monthNum,
+      sortKey: m.sortKey,
+      month: m.month,
       totalKwh,
-      operationTimeH: sheets.sheet3.totalTime,
-      totalEmptyings,
+      operationTimeH: m.operationTime || 0,
+      totalEmptyings: Math.round(totalEmptyings),
       kwhPerEmptying,
     }
   })

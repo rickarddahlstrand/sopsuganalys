@@ -1,44 +1,49 @@
 /**
- * Port of scripts/energi_drift.py
- * Sources: Sheet3 (energy, op time), Sheet5 (fractions), Sheet7 (machines)
+ * Energi- & driftanalys.
+ *
+ * Sources:
+ *   - monthlyHistory: kombinerad/dedupad historik fran alla filers Sheet3+Sheet5
+ *   - parsedFiles[].sheets.sheet7: per-fil programstatistik (medelvarde av filerna)
  */
 
-export function analyzeEnergiDrift(parsedFiles) {
+export function analyzeEnergiDrift(parsedFiles, monthlyHistory) {
+  const history = monthlyHistory || []
   const energy = []
   const fractions = []
   const machines = []
 
-  for (const file of parsedFiles) {
-    const { monthNum, sortKey, month, sheets } = file
-
-    // Sheet3: total energy + operation time
-    const s3 = sheets.sheet3
+  // Energi & drifttid per manad fran kombinerad historik
+  for (const m of history) {
     energy.push({
-      monthNum,
-      sortKey,
-      month,
-      energyKwh: s3.totalEnergy,
-      operationTimeH: s3.totalTime,
+      monthNum: m.monthNum,
+      sortKey: m.sortKey,
+      month: m.month,
+      energyKwh: m.energyTotal || 0,
+      operationTimeH: m.operationTime || 0,
     })
 
-    // Sheet5: per-fraction emptyings
-    for (const row of sheets.sheet5) {
-      if (row.emptyings && row.emptyings > 0) {
+    // Per-fraktion tomningar per manad fran perFraction
+    for (const [frac, data] of Object.entries(m.perFraction || {})) {
+      const emptyings = Math.round(data.emptyings || 0)
+      if (emptyings > 0) {
         fractions.push({
-          monthNum,
-          sortKey,
-          month,
-          fraction: row.fraction,
-          emptyings: Math.round(row.emptyings),
-          kWh: row.kWh || 0,
-          hours: row.hours,
-          emptyingPerMinute: row.emptyingPerMinute,
+          monthNum: m.monthNum,
+          sortKey: m.sortKey,
+          month: m.month,
+          fraction: frac,
+          emptyings,
+          kWh: data.energy || 0,
+          hours: data.hours,
+          emptyingPerMinute: null,
         })
       }
     }
+  }
 
-    // Sheet7: machines
-    for (const row of sheets.sheet7) {
+  // Maskiner: Sheet7 ar per-fil snapshot. Anvand alla filer for snitt.
+  for (const file of parsedFiles || []) {
+    const { monthNum, sortKey, month, sheets } = file
+    for (const row of sheets.sheet7 || []) {
       machines.push({
         monthNum,
         sortKey,
@@ -51,30 +56,27 @@ export function analyzeEnergiDrift(parsedFiles) {
     }
   }
 
-  // Compute totals
   const totalEnergy = energy.reduce((s, e) => s + e.energyKwh, 0)
   const totalTime = energy.reduce((s, e) => s + e.operationTimeH, 0)
   const totalEmptyings = fractions.reduce((s, f) => s + f.emptyings, 0)
 
-  // Fractions pivoted: { fraction: totalEmptyings }
   const fractionTotals = {}
   for (const f of fractions) {
     fractionTotals[f.fraction] = (fractionTotals[f.fraction] || 0) + f.emptyings
   }
 
-  // Fraction names (sorted by total)
   const fractionNames = Object.entries(fractionTotals)
     .sort((a, b) => b[1] - a[1])
     .map(e => e[0])
 
-  // Monthly stacked fraction data for charts
   const monthlyFractions = {}
   for (const f of fractions) {
-    if (!monthlyFractions[f.sortKey]) monthlyFractions[f.sortKey] = { monthNum: f.monthNum, sortKey: f.sortKey, month: f.month }
+    if (!monthlyFractions[f.sortKey]) {
+      monthlyFractions[f.sortKey] = { monthNum: f.monthNum, sortKey: f.sortKey, month: f.month }
+    }
     monthlyFractions[f.sortKey][f.fraction] = (monthlyFractions[f.sortKey][f.fraction] || 0) + f.emptyings
   }
 
-  // Machine averages
   const machineMap = {}
   for (const m of machines) {
     if (!machineMap[m.machine]) machineMap[m.machine] = { starts: [], hours: [], kWh: [] }

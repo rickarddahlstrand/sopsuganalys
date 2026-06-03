@@ -27,6 +27,7 @@ export function useAnalysis() {
     if (state.energiDrift) return // already ran
 
     const files = state.parsedFiles
+    const monthlyHistory = state.monthlyHistory || []
     dispatch({ type: 'SET_LOADING', payload: true })
 
     async function run() {
@@ -34,7 +35,7 @@ export function useAnalysis() {
         // Phase A: Core analysis
         dispatch({ type: 'SET_PROGRESS', payload: { progress: 10, label: 'Analyserar energi & drift...' } })
         await tick()
-        const energiDrift = analyzeEnergiDrift(files)
+        const energiDrift = analyzeEnergiDrift(files, monthlyHistory)
         dispatch({ type: 'SET_ANALYSIS', key: 'energiDrift', payload: energiDrift })
 
         dispatch({ type: 'SET_PROGRESS', payload: { progress: 20, label: 'Analyserar ventiler...' } })
@@ -60,7 +61,7 @@ export function useAnalysis() {
 
         dispatch({ type: 'SET_PROGRESS', payload: { progress: 50, label: 'Analyserar fraktioner...' } })
         await tick()
-        const fraktionResult = analyzeFraktioner(files)
+        const fraktionResult = analyzeFraktioner(files, monthlyHistory)
         dispatch({ type: 'SET_ANALYSIS', key: 'fraktionAnalys', payload: fraktionResult })
 
         dispatch({ type: 'SET_PROGRESS', payload: { progress: 60, label: 'Analyserar grenar...' } })
@@ -76,7 +77,7 @@ export function useAnalysis() {
         // Phase C: Trends (requires Phase A)
         dispatch({ type: 'SET_PROGRESS', payload: { progress: 75, label: 'Beräknar trender...' } })
         await tick()
-        const trendResult = analyzeTrender(files, energiDrift, ventilerResult, larmResult)
+        const trendResult = analyzeTrender(files, energiDrift, ventilerResult, larmResult, monthlyHistory)
         dispatch({ type: 'SET_ANALYSIS', key: 'trendanalys', payload: trendResult })
 
         // Phase D: Recommendations + operational experience (requires Phase C)

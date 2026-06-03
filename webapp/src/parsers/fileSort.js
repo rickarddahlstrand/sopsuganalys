@@ -100,17 +100,10 @@ function parseDateString(str) {
 
 /**
  * Extract month number and year from filename.
- * Supports various patterns:
- * - "rapport_1_2025.xls" / "Service_-_monthly_report_HammarbyGard_1_2026 (1).xls"
- * - "rapport_januari_2025.xls" / "report_October_2025.xls"
- * - "report_2025-01.xls" / "report_2025_01.xls"
- * - "Service - monthly report Facility 1 2026.xls"
  */
 function extractMonthYearFromFilename(fileName) {
-  // Remove common suffixes like "(1)", "(2)", etc. and file extension
   const cleaned = fileName.replace(/\s*\(\d+\)\s*/g, '').replace(/\.xlsx?$/i, '')
 
-  // Try pattern: _MM_YYYY or _M_YYYY at end of filename
   const pattern1 = cleaned.match(/_(\d{1,2})_(\d{4})$/)
   if (pattern1) {
     const monthNum = parseInt(pattern1[1], 10)
@@ -120,7 +113,6 @@ function extractMonthYearFromFilename(fileName) {
     }
   }
 
-  // Try pattern: _YYYY_MM or _YYYY-MM at end
   const pattern2 = cleaned.match(/_(\d{4})[-_](\d{1,2})$/)
   if (pattern2) {
     const year = parseInt(pattern2[1], 10)
@@ -130,7 +122,6 @@ function extractMonthYearFromFilename(fileName) {
     }
   }
 
-  // Try to find _M_YYYY or _MM_YYYY anywhere in filename
   const pattern3 = cleaned.match(/_(\d{1,2})_(\d{4})/)
   if (pattern3) {
     const monthNum = parseInt(pattern3[1], 10)
@@ -140,8 +131,6 @@ function extractMonthYearFromFilename(fileName) {
     }
   }
 
-  // Try month name (EN/SV) + year in filename
-  // e.g. "rapport_januari_2025" or "report_October_2025"
   const lowerCleaned = cleaned.toLowerCase()
   for (const [name, num] of Object.entries({ ...MONTH_NAMES_EN, ...MONTH_NAMES_SV })) {
     if (lowerCleaned.includes(name)) {
@@ -152,7 +141,6 @@ function extractMonthYearFromFilename(fileName) {
     }
   }
 
-  // Try YYYY-MM or YYYY_MM anywhere in filename
   const isoPattern = cleaned.match(/\b(20\d{2})[-_](\d{1,2})\b/)
   if (isoPattern) {
     const year = parseInt(isoPattern[1], 10)
@@ -162,7 +150,6 @@ function extractMonthYearFromFilename(fileName) {
     }
   }
 
-  // Try with spaces as separators: "something M YYYY" or "something MM YYYY"
   const spacePattern = cleaned.match(/[\s_-](\d{1,2})\s+(20\d{2})/)
   if (spacePattern) {
     const monthNum = parseInt(spacePattern[1], 10)
@@ -172,7 +159,6 @@ function extractMonthYearFromFilename(fileName) {
     }
   }
 
-  // Try MM-YYYY with hyphen
   const revPattern = cleaned.match(/\b(\d{1,2})-(20\d{2})\b/)
   if (revPattern) {
     const monthNum = parseInt(revPattern[1], 10)
@@ -188,25 +174,33 @@ function extractMonthYearFromFilename(fileName) {
 /**
  * Sort parsed files by year and month, extract all sheet data.
  * Input: array of { fileName, workbook, sheetNames }
- * Output: sorted array of { monthNum, year, sortKey, month, fileName, sheets }
- *   - sortKey: year*100 + monthNum (unique across years)
- *   - month: display label, e.g. "Jan" (single year) or "Jan 25" (multi-year)
+ *
+ * Output:
+ *   {
+ *     files: [{ monthNum, year, sortKey, month, fileName, sheets }, ...],
+ *     facilityName,
+ *     monthlyHistory: [{ monthLabel, sortKey, monthNum, year, month, energyTotal,
+ *                        energyAuto, energyManual, energyIdle, timeAuto, timeManual,
+ *                        timeIdle, perFraction: { [frac]: { hours, energy, emptyings } } }, ...]
+ *   }
+ *
+ * - files[].sheets innehaller fortfarande per-fil sheet9/sheet11/sheet13-snapshots.
+ * - monthlyHistory ar dedupad pa monthLabel (= "YY-Mon") och innehaller
+ *   kombinerad data fran ALLA filers Sheet3 + Sheet5 historik-rader.
+ * - sheet3/sheet5 pa file-objektet innehaller fortfarande den ursprungliga
+ *   per-fil strukturen for kod som behover veta vilken manad filen rapporterar.
  */
 export function sortFilesByMonth(parsedFiles) {
-  // Track facility name (should be same across all files)
   let facilityName = null
 
   const extracted = parsedFiles
     .map(f => {
-      // Extract header info first (facility name and period)
       const header = extractSheet1Header(f.workbook)
 
-      // Store facility name from first file that has it
       if (header.facilityName && !facilityName) {
         facilityName = header.facilityName
       }
 
-      // Extract sheet data
       const sheets = {
         sheet1: extractSheet1(f.workbook),
         sheet3: extractSheet3(f.workbook),
@@ -217,7 +211,6 @@ export function sortFilesByMonth(parsedFiles) {
         sheet13: extractSheet13(f.workbook),
       }
 
-      // Try to extract month/year from filename first, then content
       const my = extractMonthYearFromContent(header, sheets.sheet1, f.fileName)
       if (!my) {
         console.warn(`[Sopsuganalys] Kunde inte avgöra månad för fil: ${f.fileName}`)
@@ -234,8 +227,7 @@ export function sortFilesByMonth(parsedFiles) {
     })
     .filter(Boolean)
 
-  // Safety net: if multiple files mapped to the same month, the content-based
-  // extraction likely picked up a static/wrong header. Fall back to filename.
+  // Safety net: if multiple files mapped to the same month, fall back to filename
   if (extracted.length > 1) {
     const monthCounts = new Map()
     for (const f of extracted) {
@@ -247,7 +239,6 @@ export function sortFilesByMonth(parsedFiles) {
     if (hasDuplicates) {
       for (const [, files] of monthCounts) {
         if (files.length <= 1) continue
-        // Try filename-based extraction for files sharing the same month
         for (const f of files) {
           const fromFilename = extractMonthYearFromFilename(f.fileName)
           if (fromFilename) {
@@ -262,11 +253,9 @@ export function sortFilesByMonth(parsedFiles) {
 
   extracted.sort((a, b) => a.sortKey - b.sortKey)
 
-  // Determine if multi-year
   const years = new Set(extracted.map(f => f.year))
   const multiYear = years.size > 1
 
-  // Add display label
   for (const f of extracted) {
     f.monthName = multiYear
       ? `${MANAD_NAMN[f.monthNum]} ${String(f.year).slice(-2)}`
@@ -274,115 +263,89 @@ export function sortFilesByMonth(parsedFiles) {
     f.month = f.monthName
   }
 
-  // Convert cumulative sheet values to per-month deltas.
-  // Each .xls report contains totals from the report period start (e.g. year start
-  // or facility start) to the report date — so Feb's value = Jan+Feb cumulative.
-  // We convert by subtracting the previous month's value for the same facility.
-  deltafyCumulativeSheets(extracted)
+  const monthlyHistory = buildCombinedMonthlyHistory(extracted, multiYear)
 
-  // Return both the files and metadata
   return {
     files: extracted,
     facilityName,
+    monthlyHistory,
   }
 }
 
 /**
- * Convert cumulative period-to-date values into per-month deltas.
+ * Bygg en kombinerad, dedupad historik fran alla filers Sheet3 + Sheet5.
  *
- * Operates in-place on the already-sorted list of files. For each consecutive
- * pair (previous → current) we subtract the previous cumulative value from
- * the current one, yielding a single-month figure. Year boundaries reset
- * (Jan of a new year is assumed to already be a single-month value).
+ * Varje fil innehaller upp till 13 manads-rader. Manaderna ar i de flesta fall
+ * identiska over filer som rapporterar samma manad, men nagra filer kan ha
+ * tomma celler. Vi valjer for varje monthLabel det varde som har storst
+ * dataunderlag (icke-noll-energi prioriteras), och tar samtliga unika manader.
  *
- * Sheets affected:
- *   - sheet3: totalEnergy, totalTime (single scalar per file)
- *   - sheet5: kWh, emptyings per fraction (per-fraction deltas)
- *   - sheet7: starts, hours, kWh per machine (per-machine deltas)
- *
- * Sheets NOT affected (non-cumulative or period-based metrics):
- *   - sheet1: KPI key/value pairs (many already monthly or state snapshots)
- *   - sheet5 hours, emptyingPerMinute (rate/time, treated like availability)
- *   - sheet9, sheet11: valve commands and availability (handled upstream)
- *   - sheet13: alarm category current period (already per-period)
+ * Returnerar array sorterad kronologiskt med berikat displaynamn.
  */
-function deltafyCumulativeSheets(files) {
-  if (!files.length) return
+function buildCombinedMonthlyHistory(files, multiYear) {
+  // Begränsa till perioden användaren faktiskt laddat upp — Sheet3/Sheet5-historiken
+  // kan sträcka sig 12+ månader bakåt vilket annars ger 25+ månaders energi
+  // men bara 14 månaders ventil/larm/manuell-data (inkonsekvent UX).
+  const uploadedKeys = new Set(files.map(f => f.sortKey))
 
-  // Group files by year so the "previous" month only comes from same year.
-  const byYear = {}
+  // Forsta pass: samla alla rader per monthLabel
+  const collectS3 = new Map()
+  const collectS5 = new Map()
+
   for (const f of files) {
-    if (!byYear[f.year]) byYear[f.year] = []
-    byYear[f.year].push(f)
-  }
-
-  for (const year of Object.keys(byYear)) {
-    const yearFiles = byYear[year].sort((a, b) => a.sortKey - b.sortKey)
-
-    for (let i = yearFiles.length - 1; i > 0; i--) {
-      const cur = yearFiles[i]
-      const prev = yearFiles[i - 1]
-
-      // --- Sheet3: scalar totals ---
-      const cs3 = cur.sheets.sheet3
-      const ps3 = prev.sheets.sheet3
-      if (cs3 && ps3) {
-        cur.sheets.sheet3 = {
-          ...cs3,
-          totalEnergy: deltaValue(cs3.totalEnergy, ps3.totalEnergy),
-          totalTime: deltaValue(cs3.totalTime, ps3.totalTime),
-        }
-      }
-
-      // --- Sheet5: per-fraction rows (cumulative kWh, emptyings) ---
-      // Match rows by fraction name across months.
-      const prev5ByFrac = {}
-      for (const r of prev.sheets.sheet5 || []) {
-        prev5ByFrac[r.fraction] = r
-      }
-      cur.sheets.sheet5 = (cur.sheets.sheet5 || []).map(r => {
-        const p = prev5ByFrac[r.fraction]
-        if (!p) return r
-        return {
-          ...r,
-          kWh: deltaValue(r.kWh, p.kWh),
-          emptyings: deltaValue(r.emptyings, p.emptyings),
-          // hours (fyllnadstid) and emptyingPerMinute are rate/time metrics —
-          // leave as-is. They represent the report-period state, not accrued counts.
-        }
-      })
-
-      // --- Sheet7: per-machine rows (cumulative starts, hours, kWh) ---
-      const prev7ByName = {}
-      for (const r of prev.sheets.sheet7 || []) {
-        prev7ByName[r.name] = r
-      }
-      cur.sheets.sheet7 = (cur.sheets.sheet7 || []).map(r => {
-        const p = prev7ByName[r.name]
-        if (!p) return r
-        return {
-          ...r,
-          starts: deltaValue(r.starts, p.starts),
-          hours: deltaValue(r.hours, p.hours),
-          kWh: deltaValue(r.kWh, p.kWh),
-        }
-      })
+    for (const m3 of f.sheets?.sheet3?.monthlyHistory || []) {
+      if (!m3.monthLabel || !uploadedKeys.has(m3.sortKey)) continue
+      if (!collectS3.has(m3.monthLabel)) collectS3.set(m3.monthLabel, [])
+      collectS3.get(m3.monthLabel).push(m3)
+    }
+    for (const m5 of f.sheets?.sheet5?.monthlyHistory || []) {
+      if (!m5.monthLabel || !uploadedKeys.has(m5.sortKey)) continue
+      if (!collectS5.has(m5.monthLabel)) collectS5.set(m5.monthLabel, [])
+      collectS5.get(m5.monthLabel).push(m5)
     }
   }
-}
 
-/**
- * Compute delta cur - prev with guards:
- *  - If either is null/undefined → return cur unchanged
- *  - If prev > cur (counter reset or we guessed wrong) → return cur
- *    (treat as already single-month — safer than producing a negative)
- */
-function deltaValue(cur, prev) {
-  if (cur == null) return cur
-  if (prev == null) return cur
-  const c = Number(cur)
-  const p = Number(prev)
-  if (isNaN(c) || isNaN(p)) return cur
-  if (p > c) return cur
-  return c - p
+  // Andra pass: valj basta varde per manad
+  const allLabels = new Set([...collectS3.keys(), ...collectS5.keys()])
+  const result = []
+
+  for (const label of allLabels) {
+    const s3Cands = collectS3.get(label) || []
+    const s5Cands = collectS5.get(label) || []
+
+    // Valj Sheet3-varde: forsta med energyTotal > 0, annars forsta varde
+    const m3 = s3Cands.find(c => (c.energyTotal || 0) > 0) || s3Cands[0]
+    // Sheet5: valj forsta som har nagon icke-noll perFraction
+    const m5 = s5Cands.find(c => {
+      const total = Object.values(c.perFraction || {}).reduce((s, d) => s + (d.emptyings || 0), 0)
+      return total > 0
+    }) || s5Cands[0]
+
+    const sortKey = m3?.sortKey ?? m5?.sortKey
+    if (sortKey == null) continue
+    const year = Math.floor(sortKey / 100)
+    const monthNum = sortKey % 100
+    const monthName = multiYear
+      ? `${MANAD_NAMN[monthNum]} ${String(year).slice(-2)}`
+      : MANAD_NAMN[monthNum]
+
+    result.push({
+      monthLabel: label,
+      sortKey,
+      monthNum,
+      year,
+      month: monthName,
+      energyAuto: m3?.energyAuto || 0,
+      energyManual: m3?.energyManual || 0,
+      energyIdle: m3?.energyIdle || 0,
+      energyTotal: m3?.energyTotal || 0,
+      timeAuto: m3?.timeAuto || 0,
+      timeManual: m3?.timeManual || 0,
+      timeIdle: m3?.timeIdle || 0,
+      operationTime: (m3?.timeAuto || 0) + (m3?.timeManual || 0) + (m3?.timeIdle || 0),
+      perFraction: m5?.perFraction || {},
+    })
+  }
+
+  return result.sort((a, b) => a.sortKey - b.sortKey)
 }

@@ -34,19 +34,20 @@ export async function loadFacilityAnalysis(id) {
   // Sort by month and extract sheets (mirrors UploadSection flow)
   const sorted = sortFilesByMonth(parsed)
   const files = sorted.files
+  const monthlyHistory = sorted.monthlyHistory || []
 
   // Run the analysis pipeline synchronously (the async/tick-yielding in
   // useAnalysis.js is only to keep the UI responsive during initial load;
   // here we want a single result to dispatch)
-  const energiDrift = analyzeEnergiDrift(files)
+  const energiDrift = analyzeEnergiDrift(files, monthlyHistory)
   const ventiler = analyzeVentiler(files)
   const larm = analyzeLarm(files)
   const nivagivare = analyzeNivagivare(files)
   const sammanfattning = analyzeSammanfattning(files)
-  const fraktionAnalys = analyzeFraktioner(files)
+  const fraktionAnalys = analyzeFraktioner(files, monthlyHistory)
   const grenDjupanalys = analyzeGrenar(files)
   const manuellAnalys = analyzeManuell(files)
-  const trendanalys = analyzeTrender(files, energiDrift, ventiler, larm)
+  const trendanalys = analyzeTrender(files, energiDrift, ventiler, larm, monthlyHistory)
   const rekommendationer = generateRekommendationer(trendanalys, ventiler, larm)
   const drifterfarenheter = analyzeDrifterfarenheter(
     trendanalys, ventiler, manuellAnalys, larm,

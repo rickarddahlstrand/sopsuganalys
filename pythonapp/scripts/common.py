@@ -22,16 +22,22 @@ MANAD_NAMN = {
 
 
 def get_report_files() -> list[tuple[int, str, Path]]:
-    """Returnerar sorterad lista av (månadsnummer, månadsnamn, sökväg)."""
+    """Returnerar sorterad lista av (manadsnummer, manadsnamn, sokvag).
+
+    Stoder filnamn med olika ar (t.ex. *_1_2025.xls, *_2_2026.xls).
+    Returnerar sortering pa (ar * 100 + manad).
+    """
     files = sorted(RAPPORT_DIR.glob("*.xls"))
     result = []
     for f in files:
-        m = re.search(r"_(\d{1,2})_2025\.xls$", f.name)
+        m = re.search(r"_(\d{1,2})_(\d{4})\.xls$", f.name)
         if m:
             month = int(m.group(1))
-            result.append((month, MANAD_NAMN[month], f))
-    result.sort(key=lambda x: x[0])
-    return result
+            year = int(m.group(2))
+            result.append((month, MANAD_NAMN[month], f, year))
+    result.sort(key=lambda x: x[3] * 100 + x[0])
+    # Behall bakat-kompat-tupelformat (month, name, path) — slang bort year
+    return [(m, n, p) for (m, n, p, _) in result]
 
 
 def read_sheet(filepath: Path, sheet_name: str, header_row: int) -> pd.DataFrame:

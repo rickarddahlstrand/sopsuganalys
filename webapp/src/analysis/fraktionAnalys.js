@@ -1,29 +1,47 @@
 /**
- * Port of scripts/fraktion_analys.py
- * Source: Sheet5 — all columns per fraction per month
+ * Fraktionsanalys.
+ *
+ * Sources:
+ *   - monthlyHistory: kombinerad historik med perFraction per manad
+ *   - parsedFiles[].sheets.sheet5.fractions: per-fil summa (anvand bara for emptyingPerMinute-snitt om historiken saknar det)
  */
 
 import { splitByHalfPeriod } from '../utils/halfPeriod'
 
-export function analyzeFraktioner(parsedFiles) {
+export function analyzeFraktioner(parsedFiles, monthlyHistory) {
+  const history = monthlyHistory || []
   const rows = []
 
-  for (const file of parsedFiles) {
-    const { monthNum, sortKey, month, sheets } = file
-    for (const row of sheets.sheet5) {
-      const emptyings = row.emptyings || 0
-      const kWh = row.kWh || 0
+  // Bygg en lookup over emptyingPerMinute per fraktion fran per-fil summan (Sheet5 R4-R6).
+  // Det ar inte per-manad i historiken men ar samma fraktions effektivitet for filens manad.
+  const epmByFracMonth = {}
+  for (const file of parsedFiles || []) {
+    const fracs = file.sheets?.sheet5?.fractions || []
+    for (const f of fracs) {
+      // Vi kanner inte exakt vilken manad summan motsvarar — det ar filens rapportmanad.
+      const key = `${f.fraction}|${file.sortKey}`
+      epmByFracMonth[key] = f.emptyingPerMinute
+    }
+  }
+
+  for (const m of history) {
+    for (const [frac, data] of Object.entries(m.perFraction || {})) {
+      const emptyings = Math.round(data.emptyings || 0)
+      const kWh = data.energy || 0
+      const hours = data.hours
       const kwhPerEmpty = emptyings > 0 ? Math.round((kWh / emptyings) * 1000) / 1000 : null
+      const epmKey = `${frac}|${m.sortKey}`
+      const epm = epmByFracMonth[epmKey] ?? null
 
       rows.push({
-        monthNum,
-        sortKey,
-        month,
-        fraction: row.fraction,
-        hoursHighFill: row.hours != null ? Math.round(row.hours * 100) / 100 : null,
+        monthNum: m.monthNum,
+        sortKey: m.sortKey,
+        month: m.month,
+        fraction: frac,
+        hoursHighFill: hours != null ? Math.round(hours * 100) / 100 : null,
         kWh: Math.round(kWh * 10) / 10,
-        emptyings: Math.round(emptyings),
-        emptyingPerMinute: row.emptyingPerMinute != null ? Math.round(row.emptyingPerMinute * 10000) / 10000 : null,
+        emptyings,
+        emptyingPerMinute: epm != null ? Math.round(epm * 10000) / 10000 : null,
         kWhPerEmptying: kwhPerEmpty,
       })
     }
@@ -31,12 +49,9 @@ export function analyzeFraktioner(parsedFiles) {
 
   const fractions = [...new Set(rows.map(r => r.fraction))].sort()
 
-  // Seasonal analysis per fraction
   const seasonal = {}
   for (const frac of fractions) {
     const fracRows = rows.filter(r => r.fraction === frac)
-    // H1/H2 uses chronological sortKey so multi-year data isn't split by calendar half.
-    // Summer/winter remain calendar-based — they're physical seasons.
     const { h1, h2 } = splitByHalfPeriod(fracRows)
     const summer = fracRows.filter(r => [6, 7, 8].includes(r.monthNum))
     const winter = fracRows.filter(r => [12, 1, 2].includes(r.monthNum))
@@ -56,7 +71,6 @@ export function analyzeFraktioner(parsedFiles) {
     }
   }
 
-  // Fill analysis
   const fillAnalysis = {}
   for (const frac of fractions) {
     const filled = rows.filter(r => r.fraction === frac && r.hoursHighFill != null)
@@ -73,7 +87,6 @@ export function analyzeFraktioner(parsedFiles) {
     }
   }
 
-  // Throughput analysis
   const throughput = {}
   for (const frac of fractions) {
     const epm = rows.filter(r => r.fraction === frac && r.emptyingPerMinute != null).map(r => r.emptyingPerMinute)

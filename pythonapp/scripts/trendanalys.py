@@ -127,52 +127,36 @@ def collect_valve_monthly(report_files):
 
 
 def collect_energy_detail(report_files):
-    """Samlar per-fraktion per-manad energi- och tomningsdata."""
+    """Samlar per-manad energi-, tomnings- och fraktionsdata fran kombinerad
+    Sheet3+Sheet5-historik (deduperad over filer)."""
+    from energi_drift import collect_combined_monthly_history
+
+    history = collect_combined_monthly_history(report_files)
     rows = []
-    for month_num, month_name, filepath in report_files:
-        # Sheet3: total energi + drifttid
-        df3 = read_sheet(filepath, "Sheet3", header_row=3)
-        energy_col = [c for c in df3.columns if "energy" in c.lower() or "kwh" in c.lower()]
-        time_col = [c for c in df3.columns if "operation" in c.lower() or "time" in c.lower()]
-        total_energy = pd.to_numeric(df3[energy_col[0]], errors="coerce").sum() if energy_col else 0
-        total_time = pd.to_numeric(df3[time_col[0]], errors="coerce").sum() if time_col else 0
-
-        # Sheet5: per fraktion
-        df5 = read_sheet(filepath, "Sheet5", header_row=3)
-        frac_col = [c for c in df5.columns if "fraction" in c.lower()]
-        kwh_col = [c for c in df5.columns if "kwh" in c.lower()]
-        empty_col = [c for c in df5.columns if "emptying" in c.lower() and "minute" not in c.lower()]
-        epm_col = [c for c in df5.columns if "minute" in c.lower()]
-
+    for m in history:
         frac_rows = []
-        if frac_col:
-            for _, r in df5.iterrows():
-                frac = str(r[frac_col[0]]).strip()
-                if not frac or frac == "nan":
-                    continue
-                # Filtrera bort historiska manad-rader
-                if frac.lower() == "month" or re.match(r"^\d{2}-\w+$", frac):
-                    continue
-                kwh = pd.to_numeric(r[kwh_col[0]], errors="coerce") if kwh_col else 0
-                emptyings = pd.to_numeric(r[empty_col[0]], errors="coerce") if empty_col else 0
-                epm = pd.to_numeric(r[epm_col[0]], errors="coerce") if epm_col else 0
-                kwh_per_empty = kwh / emptyings if emptyings and emptyings > 0 else 0
-                frac_rows.append({
-                    "Fraktion": frac,
-                    "kWh": kwh if pd.notna(kwh) else 0,
-                    "Tomningar": int(emptyings) if pd.notna(emptyings) else 0,
-                    "kWh_per_tomning": round(kwh_per_empty, 3) if pd.notna(kwh_per_empty) else 0,
-                    "Tomning_per_min": round(epm, 4) if pd.notna(epm) else 0,
-                })
+        for frac, data in m["perFraction"].items():
+            kwh = data.get("energy", 0)
+            emptyings = data.get("emptyings", 0)
+            kwh_per_empty = (kwh / emptyings) if (kwh and emptyings) else 0
+            frac_rows.append({
+                "Fraktion": frac,
+                "kWh": kwh,
+                "Tomningar": int(emptyings) if emptyings else 0,
+                "kWh_per_tomning": round(kwh_per_empty, 3),
+                "Tomning_per_min": 0,
+            })
 
         total_emptyings = sum(fr["Tomningar"] for fr in frac_rows)
-        kwh_per_empty_total = total_energy / total_emptyings if total_emptyings > 0 else 0
+        total_energy = m["Energi_kWh"]
+        kwh_per_empty_total = (total_energy / total_emptyings) if total_emptyings > 0 else 0
 
         rows.append({
-            "Manad_nr": month_num,
-            "Manad": month_name,
+            "Manad_nr": m["Manad_nr"],
+            "Manad": m["Manad"],
+            "sortKey": m["sortKey"],
             "Total_kWh": round(total_energy, 1),
-            "Drifttid_h": round(total_time, 1),
+            "Drifttid_h": round(m["Drifttid_h"], 1),
             "Total_tomningar": total_emptyings,
             "kWh_per_tomning": round(kwh_per_empty_total, 3),
             "Fraktioner": frac_rows,

@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
 """Fraktionsdjupanalys for sopsugsanlaggningen.
 
-Extraherar oanvanda Sheet5-kolumner ("Hours", "Emptying/minute") for
-containerfyllnadsanalys, genomstromning och sasongsvariation per fraktion.
-
-Datakallor:
-  - Sheet5 (rad 3): Fraction, Hours, kWh, Emptyings, Emptying/minute
+Anvander den kombinerade per-manad-historiken (deduperad over alla filer)
+istallet for per-fil snapshot. Det gor att en enstaka uppladdad fil ger
+upp till 13 manaders historik och flera filer dedupar pa "YY-Mon".
 
 Output:
-  - output/fraktion_analys.csv — Per fraktion per manad, alla kolumner
-  - output/fraktion_analys.png — 3x2 subplots
+  - output/fraktion_analys.csv — Per fraktion per manad
+  - output/fraktion_analys.png — 6 individuella grafer
   - Textsammanfattning till stdout
 """
-
-import re
 
 import numpy as np
 import pandas as pd
@@ -25,56 +21,83 @@ from common import (
     OUTPUT_DIR,
     MANAD_NAMN,
     get_report_files,
-    read_sheet,
     ensure_output_dir,
 )
+from energi_drift import collect_combined_monthly_history, read_sheet5_history
 
 
 def collect_fraction_full(report_files):
-    """Samlar alla Sheet5-kolumner per fraktion per manad.
-
-    Inkluderar oanvanda kolumner: Hours (fyllnadstid) och Emptying/minute.
+    """Kombinerar Sheet5-historiken (energi+tomningar per fraktion per manad)
+    med per-fil fraktionssummering (for "Emptying/minute" som inte finns i historiken).
     """
-    rows = []
+    history = collect_combined_monthly_history(report_files)
+
+    # Bygg lookup for emptying/minute per fil — kopplas till filens rapportmanad
+    epm_lookup = {}  # (sortKey, fraction) -> epm
+    import xlrd
+    import os
     for month_num, month_name, filepath in report_files:
-        df = read_sheet(filepath, "Sheet5", header_row=3)
-
-        frac_col = [c for c in df.columns if "fraction" in c.lower()]
-        hours_col = [c for c in df.columns if c.lower().strip() == "hours"]
-        kwh_col = [c for c in df.columns if "kwh" in c.lower()]
-        empty_col = [c for c in df.columns if "emptying" in c.lower() and "minute" not in c.lower()]
-        epm_col = [c for c in df.columns if "minute" in c.lower()]
-
-        if not frac_col:
+        # Hitta Sheet5 fraktions-summan ("Fraction" header med Hours/kWh/Emptyings/Emptying/minute)
+        wb = xlrd.open_workbook(str(filepath), logfile=open(os.devnull, "w"))
+        sh = wb.sheet_by_name("Sheet5")
+        # Hitta header-rad med "Fraction"
+        frac_row = -1
+        frac_col, hours_col, kwh_col, empty_col, epm_col = -1, -1, -1, -1, -1
+        for r in range(min(sh.nrows, 8)):
+            for c in range(sh.ncols):
+                v = str(sh.cell_value(r, c)).strip()
+                if v == "Fraction":
+                    frac_col = c
+                    frac_row = r
+                elif v == "Hours" and hours_col < 0:
+                    hours_col = c
+                elif v == "kWh" and kwh_col < 0:
+                    kwh_col = c
+                elif v == "Emptyings" and empty_col < 0:
+                    empty_col = c
+                elif "emptying" in v.lower() and "minute" in v.lower() and epm_col < 0:
+                    epm_col = c
+            if frac_row >= 0:
+                break
+        if frac_row < 0:
             continue
-
-        for _, row in df.iterrows():
-            frac = str(row[frac_col[0]]).strip()
-            if not frac or frac == "nan":
+        # Las fraktioner — ar filens rapportmanad
+        # Anta filens rapport-manad har samma sortKey som filens monad_num
+        file_sortkey = 2025 * 100 + month_num  # OBS: get_report_files returnerar bara 2025
+        for r in range(frac_row + 1, sh.nrows):
+            frac = str(sh.cell_value(r, frac_col)).strip()
+            if not frac:
+                break
+            if frac.lower() in ("month", "sum", "total"):
                 continue
+            v = sh.cell_value(r, epm_col) if epm_col >= 0 else None
+            try:
+                epm = float(v) if v not in (None, "") else None
+            except (ValueError, TypeError):
+                epm = None
+            if epm is not None:
+                epm_lookup[(file_sortkey, frac)] = epm
 
-            # Filtrera bort historiska manad-rader (t.ex. "Month", "24-Feb", "25-Jan")
-            if frac.lower() == "month":
-                continue
-            if re.match(r"^\d{2}-\w+$", frac):
-                continue
-
-            hours = pd.to_numeric(row[hours_col[0]], errors="coerce") if hours_col else np.nan
-            kwh = pd.to_numeric(row[kwh_col[0]], errors="coerce") if kwh_col else np.nan
-            emptyings = pd.to_numeric(row[empty_col[0]], errors="coerce") if empty_col else np.nan
-            epm = pd.to_numeric(row[epm_col[0]], errors="coerce") if epm_col else np.nan
-
-            kwh_per_tomning = kwh / emptyings if pd.notna(kwh) and pd.notna(emptyings) and emptyings > 0 else np.nan
+    rows = []
+    for m in history:
+        for frac, data in m["perFraction"].items():
+            hours = data.get("hours")
+            kwh = data.get("energy")
+            emptyings = data.get("emptyings", 0)
+            kwh_per_tomning = (kwh / emptyings) if (kwh and emptyings) else None
+            epm = epm_lookup.get((m["sortKey"], frac))
 
             rows.append({
-                "Manad_nr": month_num,
-                "Manad": month_name,
+                "Manad_nr": m["Manad_nr"],
+                "Manad": m["Manad"],
+                "sortKey": m["sortKey"],
+                "Manad_label": m["Manad_label"],
                 "Fraktion": frac,
-                "Timmar_hog_fyllnad": round(hours, 2) if pd.notna(hours) else np.nan,
-                "kWh": round(kwh, 1) if pd.notna(kwh) else np.nan,
-                "Tomningar": int(emptyings) if pd.notna(emptyings) else 0,
-                "Tomning_per_minut": round(epm, 4) if pd.notna(epm) else np.nan,
-                "kWh_per_tomning": round(kwh_per_tomning, 3) if pd.notna(kwh_per_tomning) else np.nan,
+                "Timmar_hog_fyllnad": round(hours, 2) if hours else np.nan,
+                "kWh": round(kwh, 1) if kwh else 0.0,
+                "Tomningar": int(emptyings) if emptyings else 0,
+                "Tomning_per_minut": round(epm, 4) if epm else np.nan,
+                "kWh_per_tomning": round(kwh_per_tomning, 3) if kwh_per_tomning else np.nan,
             })
 
     return pd.DataFrame(rows)
@@ -132,7 +155,7 @@ def compute_fill_analysis(df):
 
 
 def compute_throughput(df):
-    """Tomning/minut-trend, korrelation med energi."""
+    """Tomning/minut: medel, min, max per fraktion."""
     if df.empty:
         return {}
 
@@ -151,7 +174,7 @@ def compute_throughput(df):
 
 
 def create_plots(df):
-    """Skapar 6 individuella grafer for fraktionsanalys."""
+    """Skapar 6 grafer for fraktionsanalys."""
     if df.empty:
         print("Ingen data att visualisera.")
         return
@@ -159,11 +182,11 @@ def create_plots(df):
     fraktioner = sorted(df["Fraktion"].unique())
     colors = plt.cm.Set2(np.linspace(0, 1, len(fraktioner)))
 
-    # 1. Tomningar per fraktion (area)
     fig, ax = plt.subplots(figsize=(10, 3.5))
-    pivot_tom = df.pivot_table(index="Manad_nr", columns="Fraktion", values="Tomningar",
+    pivot_tom = df.pivot_table(index="sortKey", columns="Fraktion", values="Tomningar",
                                 aggfunc="sum", fill_value=0).sort_index()
-    pivot_tom.index = [MANAD_NAMN.get(i, str(i)) for i in pivot_tom.index]
+    label_map = df.set_index("sortKey")["Manad"].to_dict()
+    pivot_tom.index = [label_map.get(i, str(i)) for i in pivot_tom.index]
     pivot_tom.plot.area(ax=ax, alpha=0.7, colormap="Set2")
     ax.set_title("Tomningar per fraktion (sasongsmonster)")
     ax.set_ylabel("Antal tomningar")
@@ -175,13 +198,12 @@ def create_plots(df):
     plt.close(fig)
     print(f"Graf sparad: {path}")
 
-    # 2. Fyllnadstid (grouped bar)
     fig, ax = plt.subplots(figsize=(10, 3.5))
     hours_data = df.dropna(subset=["Timmar_hog_fyllnad"])
     if not hours_data.empty:
-        pivot_hours = hours_data.pivot_table(index="Manad_nr", columns="Fraktion",
+        pivot_hours = hours_data.pivot_table(index="sortKey", columns="Fraktion",
                                               values="Timmar_hog_fyllnad", aggfunc="mean").sort_index()
-        pivot_hours.index = [MANAD_NAMN.get(i, str(i)) for i in pivot_hours.index]
+        pivot_hours.index = [label_map.get(i, str(i)) for i in pivot_hours.index]
         pivot_hours.plot(kind="bar", ax=ax, colormap="Set2")
         ax.legend(fontsize=7)
     ax.set_title("Timmar vid hog fyllnadsgrad")
@@ -193,12 +215,11 @@ def create_plots(df):
     plt.close(fig)
     print(f"Graf sparad: {path}")
 
-    # 3. Genomstromning (tomning/minut) per fraktion over tid
     fig, ax = plt.subplots(figsize=(10, 3.5))
     epm_data = df.dropna(subset=["Tomning_per_minut"])
     if not epm_data.empty:
         for i, frac in enumerate(fraktioner):
-            frac_data = epm_data[epm_data["Fraktion"] == frac].sort_values("Manad_nr")
+            frac_data = epm_data[epm_data["Fraktion"] == frac].sort_values("sortKey")
             if not frac_data.empty:
                 ax.plot(frac_data["Manad"], frac_data["Tomning_per_minut"],
                         "-o", markersize=4, label=frac, color=colors[i])
@@ -212,12 +233,11 @@ def create_plots(df):
     plt.close(fig)
     print(f"Graf sparad: {path}")
 
-    # 4. kWh per tomning per fraktion
     fig, ax = plt.subplots(figsize=(10, 3.5))
     kwh_data = df.dropna(subset=["kWh_per_tomning"])
     if not kwh_data.empty:
         for i, frac in enumerate(fraktioner):
-            frac_data = kwh_data[kwh_data["Fraktion"] == frac].sort_values("Manad_nr")
+            frac_data = kwh_data[kwh_data["Fraktion"] == frac].sort_values("sortKey")
             if not frac_data.empty:
                 ax.plot(frac_data["Manad"], frac_data["kWh_per_tomning"],
                         "-o", markersize=4, label=frac, color=colors[i])
@@ -231,11 +251,10 @@ def create_plots(df):
     plt.close(fig)
     print(f"Graf sparad: {path}")
 
-    # 5. Heatmap: fraktion x manad (tomningar)
     fig, ax = plt.subplots(figsize=(10, 4.5))
-    pivot_hm = df.pivot_table(index="Fraktion", columns="Manad_nr", values="Tomningar",
+    pivot_hm = df.pivot_table(index="Fraktion", columns="sortKey", values="Tomningar",
                                aggfunc="sum", fill_value=0).sort_index()
-    pivot_hm.columns = [MANAD_NAMN.get(c, str(c)) for c in pivot_hm.columns]
+    pivot_hm.columns = [label_map.get(c, str(c)) for c in pivot_hm.columns]
     if not pivot_hm.empty:
         im = ax.imshow(pivot_hm.values, aspect="auto", cmap="YlOrRd")
         ax.set_xticks(range(len(pivot_hm.columns)))
@@ -250,7 +269,6 @@ def create_plots(df):
     plt.close(fig)
     print(f"Graf sparad: {path}")
 
-    # 6. Sommar vs vinter per fraktion
     fig, ax = plt.subplots(figsize=(10, 3.5))
     sommar = df[df["Manad_nr"].isin([6, 7, 8])].groupby("Fraktion")["Tomningar"].mean()
     vinter = df[df["Manad_nr"].isin([12, 1, 2])].groupby("Fraktion")["Tomningar"].mean()
@@ -276,7 +294,7 @@ def create_plots(df):
 def print_summary(df, seasonal, fill, throughput):
     """Skriver textsammanfattning till stdout."""
     print("\n" + "=" * 60)
-    print("FRAKTIONSANALYS — Sammanfattning 2025")
+    print("FRAKTIONSANALYS — Sammanfattning")
     print("=" * 60)
 
     if df.empty:
@@ -287,20 +305,17 @@ def print_summary(df, seasonal, fill, throughput):
     print(f"\nAntal fraktioner: {len(fraktioner)}")
     print(f"Fraktioner: {', '.join(sorted(fraktioner))}")
 
-    # Totaler per fraktion
-    print(f"\nTomningar per fraktion (aret):")
+    print(f"\nTomningar per fraktion (totalt):")
     totals = df.groupby("Fraktion")["Tomningar"].sum().sort_values(ascending=False)
     for frac, count in totals.items():
         print(f"  {frac}: {count:,}")
 
-    # Fyllnadsanalys
     if fill:
         print(f"\nFyllnadstider (timmar vid hog fyllnadsgrad):")
         for frac, info in fill.items():
             print(f"  {frac}: medel {info['medel_timmar']:.1f}h, "
                   f"max {info['max_timmar']:.1f}h ({info['topp_manad']})")
 
-    # Sasongsvariation
     if seasonal:
         print(f"\nSasongsvariation:")
         for frac, info in seasonal.items():
@@ -308,7 +323,6 @@ def print_summary(df, seasonal, fill, throughput):
                   f"(variation {info['Halvars_variation_%']:.0f}%) "
                   f"sommar={info['Sommar_medel']:.0f} vinter={info['Vinter_medel']:.0f}")
 
-    # Genomstromning
     if throughput:
         print(f"\nGenomstromning (tomning/minut):")
         for frac, info in throughput.items():
@@ -328,24 +342,19 @@ def main():
 
     print(f"Laser {len(report_files)} rapporter for fraktionsanalys...\n")
 
-    # Datainsamling
     df = collect_fraction_full(report_files)
     print(f"Totalt {len(df)} rader, {df['Fraktion'].nunique()} fraktioner")
 
-    # Analyser
     seasonal = compute_seasonal_analysis(df)
     fill = compute_fill_analysis(df)
     throughput = compute_throughput(df)
 
-    # Spara CSV
     csv_path = OUTPUT_DIR / "fraktion_analys.csv"
     df.to_csv(csv_path, index=False, encoding="utf-8-sig")
     print(f"CSV sparad: {csv_path}")
 
-    # Graf
     create_plots(df)
 
-    # Sammanfattning
     print_summary(df, seasonal, fill, throughput)
 
 

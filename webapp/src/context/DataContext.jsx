@@ -4,6 +4,7 @@ const DataContext = createContext()
 
 const initialState = {
   parsedFiles: null,
+  monthlyHistory: null,
   facilityName: null,
   energiDrift: null,
   ventiler: null,
@@ -41,6 +42,7 @@ function reducer(state, action) {
       return {
         ...state,
         parsedFiles: action.payload.files || action.payload,
+        monthlyHistory: action.payload.monthlyHistory || null,
         facilityName: action.payload.facilityName || state.facilityName,
       }
     case 'SET_LOADING':
